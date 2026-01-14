@@ -195,38 +195,6 @@
       font-size:13px;
       color:#6b7280;
     }
-
-    /* =========================
-       ✅ 新增：瀏覽計數器 UI
-    ========================= */
-    .counter-bar{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-      margin-top:10px;
-    }
-    .counter-item{
-      display:flex;
-      align-items:center;
-      gap:8px;
-      padding:8px 10px;
-      border:1px solid #e5e7eb;
-      border-radius:12px;
-      background:#f9fafb;
-      font-size:13px;
-      color:#111827;
-    }
-    .counter-label{color:#6b7280}
-    .counter-num{
-      font-weight:800;
-      font-variant-numeric:tabular-nums;
-      font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
-    }
-    .counter-note{
-      font-size:12px;
-      color:#6b7280;
-    }
   </style>
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3467776493029448"
      crossorigin="anonymous"></script>
@@ -254,19 +222,6 @@
 
   <div class="card">
     <h1>挑戰者伺服器（或其他伺服器）經驗值 / 戰力 / 職業內排名 查詢</h1>
-
-    <!-- ✅ 新增：瀏覽人數計數（今日 / 總量） -->
-    <div class="counter-bar" aria-label="瀏覽統計">
-      <div class="counter-item">
-        <span class="counter-label">今日流量</span>
-        <span id="counterToday" class="counter-num">—</span>
-      </div>
-      <div class="counter-item">
-        <span class="counter-label">總瀏覽累計</span>
-        <span id="counterTotal" class="counter-num">—</span>
-      </div>
-      <div class="counter-note" id="counterNote">計數中…</div>
-    </div>
 
     <div class="row" style="margin-top:12px">
       <!-- ✅ 雙擊這個輸入框會出現「搜尋紀錄」 -->
@@ -338,11 +293,6 @@ const tabTopExp = $("tabTopExp");
 const tabTopBp = $("tabTopBp");
 const metaInfo = $("metaInfo");
 
-/* ✅ 新增：計數器元素 */
-const counterTodayEl = $("counterToday");
-const counterTotalEl = $("counterTotal");
-const counterNoteEl = $("counterNote");
-
 /* ✅ 附近榜 UI */
 const aroundControls = $("aroundControls");
 const tabAroundExp = $("tabAroundExp");
@@ -369,104 +319,6 @@ let aroundState = {
   listStart: 0,             // 目前顯示區間起點（0-based index on sorted list）
   pageSize: 50
 };
-
-/* =========================
-   ✅ 新增：瀏覽人數計數（今日 / 總量）
-   - GitHub Pages 靜態站，使用 CountAPI
-   - 防止狂刷：同一瀏覽器 10 分鐘內只計一次（可改 0）
-   參考：hit / get / set 端點 :contentReference[oaicite:1]{index=1}
-========================= */
-const COUNTAPI_BASE = "https://api.countapi.xyz";
-const COUNTER_PREFIX = "ms_rank";            // 你想換名字就改這個
-const COUNTER_KEY_TOTAL = `${COUNTER_PREFIX}_total`;
-const COUNT_COOLDOWN_MS = 10 * 60 * 1000;    // 10分鐘；想每次重整都算就改成 0
-const COUNT_LS_KEY = `${COUNTER_PREFIX}_counted_at_v1`;
-
-function pad2(n){ return String(n).padStart(2, "0"); }
-function localYMD(){
-  const d = new Date();
-  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; // 用本地時區的「今天」
-}
-function sanitizeKey(s){
-  return (s ?? "site").toString()
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 60) || "site";
-}
-function counterNamespace(){
-  // 建議用網域當 namespace，避免撞名
-  // 例如：superbeza.github.io / 自訂網域
-  return sanitizeKey(location.hostname || "local");
-}
-function fmtInt(n){
-  if (!Number.isFinite(n)) return "—";
-  return Math.floor(n).toLocaleString("zh-TW");
-}
-async function fetchJsonNoStore(url){
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return await res.json();
-}
-async function countapiHit(ns, key){
-  return await fetchJsonNoStore(`${COUNTAPI_BASE}/hit/${encodeURIComponent(ns)}/${encodeURIComponent(key)}`);
-}
-async function countapiGet(ns, key){
-  return await fetchJsonNoStore(`${COUNTAPI_BASE}/get/${encodeURIComponent(ns)}/${encodeURIComponent(key)}`);
-}
-async function safeCountapi(fn, fallback){
-  try{
-    const r = await fn();
-    const v = Number(r?.value);
-    return Number.isFinite(v) ? v : fallback;
-  } catch {
-    return fallback;
-  }
-}
-function shouldCountNow(){
-  if (COUNT_COOLDOWN_MS <= 0) return true;
-  const last = Number(localStorage.getItem(COUNT_LS_KEY) || 0);
-  const now = Date.now();
-  return !Number.isFinite(last) || (now - last) >= COUNT_COOLDOWN_MS;
-}
-function markCounted(){
-  try{ localStorage.setItem(COUNT_LS_KEY, String(Date.now())); } catch {}
-}
-async function initTrafficCounter(){
-  const ns = counterNamespace();
-  const todayKey = `${COUNTER_PREFIX}_daily_${localYMD()}`;
-
-  counterNoteEl.textContent = "計數中…";
-
-  const doCount = shouldCountNow();
-  if (doCount) markCounted();
-
-  // doCount=true：用 hit 會 +1
-  // doCount=false：用 get 只讀取，不加
-  const totalPromise = doCount
-    ? safeCountapi(()=>countapiHit(ns, COUNTER_KEY_TOTAL), NaN)
-    : safeCountapi(()=>countapiGet(ns, COUNTER_KEY_TOTAL), NaN);
-
-  const todayPromise = doCount
-    ? safeCountapi(()=>countapiHit(ns, todayKey), NaN)
-    : safeCountapi(()=>countapiGet(ns, todayKey), NaN);
-
-  const [total, today] = await Promise.all([totalPromise, todayPromise]);
-
-  counterTotalEl.textContent = fmtInt(total);
-  counterTodayEl.textContent = fmtInt(today);
-
-  if (Number.isFinite(total) && Number.isFinite(today)){
-    counterNoteEl.textContent = doCount
-      ? "已更新（同瀏覽器 10 分鐘內重整不會一直加）"
-      : "已讀取（10 分鐘內不重複計次）";
-  } else {
-    counterNoteEl.textContent = "計數服務暫時無法連線（稍後重整再試）";
-  }
-}
-/* ========================= */
 
 /* =========================
    ✅ 搜尋紀錄（LocalStorage）
@@ -1279,7 +1131,7 @@ function buildJobRanks(worldKey, job){
   const expSorted = group
     .filter(r => r.exp !== null)
     .slice()
-    .sort((a,b) => (b.exp - b.exp) || (a.rowIdx - b.rowIdx));
+    .sort((a,b) => (b.exp - a.exp) || (a.rowIdx - b.rowIdx));
   const expJobRank = buildCompetitionRankMap(expSorted, r => r.exp);
 
   const bpSorted = group
@@ -1616,10 +1468,7 @@ jobSelect.addEventListener("change", ()=>{
   if (activeTab === "topBp") renderTop("bp");
 });
 
-/* ====== 先做「瀏覽計數」再載入資料（互不影響） ====== */
-initTrafficCounter();
-
-/* ====== 先載入資料 ====== */
+/* ====== 先載入 ====== */
 loadData().catch(err=>{
   console.error(err);
   finishLoadingProgress(false);
