@@ -3,8 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>經驗值/戰力 排名查詢（工具頁）</title>
-  <meta name="description" content="楓之谷角色經驗值/戰力/職業排名查詢工具頁，支援前 100 名榜單、職業篩選、分享連結與搜尋紀錄。" />
+  <title>經驗值/戰力 排名查詢</title>
   <style>
     body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC","Microsoft JhengHei",sans-serif;margin:24px;line-height:1.5}
     .card{max-width:1100px;margin:0 auto;border:1px solid #e5e7eb;border-radius:14px;padding:18px;box-shadow:0 2px 14px rgba(0,0,0,.05)}
@@ -32,7 +31,17 @@
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
     .nowrap{white-space:nowrap}
 
-    /* ===== 全畫面 Loading Overlay（工具頁保留，但本頁不放廣告，避免政策判定） ===== */
+    /* ✅ 靜態說明區（讓工具頁不是只有 Loading） */
+    .intro{
+      margin-top:10px;
+      padding:10px 12px;
+      border:1px solid #e5e7eb;
+      border-radius:12px;
+      background:#fafafa;
+    }
+    .intro a{color:#111827}
+
+    /* ===== 全畫面 Loading Overlay ===== */
     .overlay{
       position:fixed;inset:0;z-index:9999;
       background:rgba(255,255,255,.78);
@@ -66,6 +75,7 @@
     .overlay-title{font-weight:700;margin:0 0 2px;font-size:15px}
     .overlay-sub{margin:0;color:#6b7280;font-size:13px}
 
+    /* 進度條 */
     .progress-wrap{margin-top:10px}
     .progress{
       width:100%;
@@ -92,6 +102,7 @@
     }
     .progress-row .pct{font-variant-numeric:tabular-nums;color:#111827;font-weight:700}
 
+    /* ✅ 查詢結果：附近榜控制區 */
     .around-controls{
       display:none;
       margin-top:10px;
@@ -125,6 +136,11 @@
       color:#6b7280;
     }
 
+    /* =========================
+       ✅ 搜尋紀錄下拉（LocalStorage）
+       - 雙擊名稱輸入框顯示
+       - 方向鍵上下選 / Enter 套用 / Esc 關閉
+    ========================= */
     .history-dropdown{
       position:fixed;
       z-index:10001;
@@ -189,17 +205,8 @@
       font-size:13px;
       color:#6b7280;
     }
-
-    /* ✅ 靜態內容區（為了讓工具頁也有發布商內容） */
-    .intro{
-      padding:12px 12px 10px;
-      border:1px solid #e5e7eb;
-      border-radius:12px;
-      background:#fafafa;
-      margin:10px 0 14px;
-    }
-    .intro a{color:#111827}
   </style>
+  <!-- ✅ 注意：rank.html 故意不放 AdSense script，避免 Loading 畫面投放又被判定「沒有發布內容」 -->
 </head>
 <body>
 
@@ -225,25 +232,22 @@
   <div class="card">
     <h1>挑戰者伺服器（或其他伺服器）經驗值 / 戰力 / 職業內排名 查詢</h1>
 
-    <!-- ✅ 靜態內容（就算資料載入中，也不是空白/純 Loading 畫面） -->
     <div class="intro">
       <div class="muted">
-        本頁為查詢工具頁，提供角色「等級/經驗值%/戰力」與「全服/分服排名、職業內排名」查詢。
-        若你需要完整說明與常見問題，請回到
-        <a href="./index.html"><b>首頁</b></a>；
-        隱私權政策請見
-        <a href="./privacy.html"><b>privacy.html</b></a>。
-      </div>
-      <div class="muted" style="margin-top:6px">
-        使用方式：輸入角色名稱 → 選伺服器 → 按「查詢」。
-        也可切換「前 100 名（經驗/戰力）」並用職業篩選。
+        本頁為查詢工具頁。若要看完整介紹/FAQ 請回 <a href="./index.html"><b>首頁</b></a>；
+        隱私權政策請見 <a href="./privacy.html"><b>privacy.html</b></a>。
+        （工具頁不放廣告是為了避免 Loading 畫面投放造成 AdSense「需要處理」。）
       </div>
     </div>
 
     <div class="row" style="margin-top:12px">
+      <!-- ✅ 雙擊這個輸入框會出現「搜尋紀錄」 -->
       <input id="nameInput" placeholder="輸入角色名稱（例：Ezra蓮）" />
       <select id="worldSelect"></select>
+
+      <!-- 職業篩選（主要用在前100名） -->
       <select id="jobSelect" title="前100名可用：職業篩選"></select>
+
       <button id="searchBtn">查詢</button>
       <button id="shareBtn" class="secondary">複製查詢連結</button>
     </div>
@@ -257,6 +261,7 @@
 
     <div id="status" class="status"></div>
 
+    <!-- ✅ 查詢自己時：附近榜（經驗/戰力 Tab + 上下 50 名） -->
     <div id="aroundControls" class="around-controls">
       <div class="around-top">
         <div class="around-tabs">
@@ -274,7 +279,7 @@
 
     <div id="content"></div>
 
-    <div class="muted" style="margin-top:16px">
+    <div class="muted" style="margin-top:14px">
       ← <a href="./index.html">回首頁</a>　|　<a href="./privacy.html">隱私權政策</a>
     </div>
   </div>
@@ -309,6 +314,7 @@ const tabTopExp = $("tabTopExp");
 const tabTopBp = $("tabTopBp");
 const metaInfo = $("metaInfo");
 
+/* ✅ 附近榜 UI */
 const aroundControls = $("aroundControls");
 const tabAroundExp = $("tabAroundExp");
 const tabAroundBp = $("tabAroundBp");
@@ -317,23 +323,29 @@ const btnDown50 = $("btnDown50");
 const aroundMeta = $("aroundMeta");
 const aroundHint = $("aroundHint");
 
-let rows = [];
+let rows = [];              // {rowIdx, name, world, job, exp, bp, updatedText, updatedDate}
 let worlds = [];
-let rankCache = new Map();
-let jobRankCache = new Map();
+let rankCache = new Map();      // key(world or "__ALL__") -> {expRank,bpRank,expSorted,bpSorted}
+let jobRankCache = new Map();   // `${worldKey}||${job}` -> {expJobRank,bpJobRank}
 let loadedAt = null;
 let latestUpdated = null;
 let activeTab = "result";
 
+/* ✅ 附近榜狀態 */
 let aroundState = {
   enabled: false,
-  metric: "exp",
-  worldKey: "__ALL__",
-  centerRowIdx: null,
-  listStart: 0,
+  metric: "exp",            // "exp" | "bp"
+  worldKey: "__ALL__",      // "__ALL__" or specific world
+  centerRowIdx: null,       // 以哪一筆資料當中心（rowIdx）
+  listStart: 0,             // 目前顯示區間起點（0-based index on sorted list）
   pageSize: 50
 };
 
+/* =========================
+   ✅ 搜尋紀錄（LocalStorage）
+   - 雙擊名稱輸入框顯示
+   - Up/Down 選取、Enter 套用、Esc 關閉
+========================= */
 const HISTORY_KEY = "ms_rank_search_history_v1";
 const HISTORY_LIMIT = 25;
 
@@ -357,7 +369,9 @@ function loadSearchHistory(){
 function saveSearchHistory(arr){
   try{
     localStorage.setItem(HISTORY_KEY, JSON.stringify(arr));
-  } catch {}
+  } catch {
+    // private mode / no quota：忽略
+  }
 }
 function normalizeHistoryKey(name, world, job){
   return `${name}||${world}||${job}`;
@@ -373,6 +387,7 @@ function addSearchHistory(name, world, job){
   const list = loadSearchHistory();
   const now = Date.now();
 
+  // 去重：相同 name+world+job 移到最前面
   const next = [];
   next.push({ key, name: n, world: w, job: j, ts: now });
 
@@ -396,6 +411,7 @@ function ensureHistoryDropdown(){
   historyDropdownEl.className = "history-dropdown";
   historyDropdownEl.setAttribute("role", "listbox");
 
+  // 防止點下拉時 input 失焦導致先關掉
   historyDropdownEl.addEventListener("mousedown", (e)=>{ e.preventDefault(); });
 
   historyDropdownEl.addEventListener("click", (e)=>{
@@ -424,14 +440,17 @@ function positionHistoryDropdown(){
   const rect = nameInput.getBoundingClientRect();
   const margin = 6;
 
+  // 盡量跟輸入框同寬
   let left = rect.left;
   let width = rect.width;
 
+  // 避免超出視窗
   const maxRight = window.innerWidth - 8;
   if (left + width > maxRight){
     left = Math.max(8, maxRight - width);
   }
 
+  // 下拉高度：避免超出底部
   const top = rect.bottom + margin;
   const maxH = Math.max(160, window.innerHeight - top - 12);
 
@@ -458,6 +477,7 @@ function renderHistoryDropdown(filterText){
   const q = (filterText ?? "").toString().trim();
   const list = loadSearchHistory();
 
+  // 篩選：輸入框有字就只顯示包含字串的
   let filtered = list;
   if (q){
     filtered = list.filter(it => ((it?.name ?? "") + "").includes(q));
@@ -500,6 +520,7 @@ function showHistoryDropdown(){
   positionHistoryDropdown();
   historyOpen = true;
 
+  // 預設選第一筆
   historyActiveIndex = 0;
   renderHistoryDropdown(nameInput.value);
 
@@ -521,7 +542,8 @@ function moveHistoryActive(delta){
   historyActiveIndex = next;
   renderHistoryDropdown(nameInput.value);
 
-  const btn = historyDropdownEl.querySelector(\`.history-item[data-hindex="\${next}"]\`);
+  // 確保可見
+  const btn = historyDropdownEl.querySelector(`.history-item[data-hindex="${next}"]`);
   if (btn && btn.scrollIntoView){
     btn.scrollIntoView({ block: "nearest" });
   }
@@ -532,6 +554,7 @@ function applyHistoryByIndex(idx){
 
   nameInput.value = (it.name ?? "").toString();
 
+  // world / job 盡量套用（若找不到選項就退回全部）
   const wantWorld = (it.world ?? "__ALL__").toString();
   const hasWorld = Array.from(worldSelect.options).some(o => o.value === wantWorld);
   worldSelect.value = hasWorld ? wantWorld : "__ALL__";
@@ -545,7 +568,9 @@ function applyHistoryByIndex(idx){
   hideHistoryDropdown();
   setActiveTab("result");
 }
+/* ========================= */
 
+/* ===== 進度條（假進度：0→92，完成跳 100） ===== */
 let progressValue = 0;
 let progressTimer = null;
 let progressTicks = 0;
@@ -588,6 +613,7 @@ function finishLoadingProgress(ok){
     setProgress(100, "失敗");
   }
 }
+/* ================================================ */
 
 function setUiDisabled(disabled){
   searchBtn.disabled = disabled;
@@ -633,6 +659,7 @@ function toNumber(v){
   return Number.isFinite(n) ? n : null;
 }
 
+/** 拆等級 / 經驗值%（✅ 去掉前導 0：067.096 -> 67.096） */
 function splitLevelExpRate(expVal){
   if (expVal === null || expVal === undefined || !Number.isFinite(expVal)) {
     return { level: "-", expPct: "-" };
@@ -652,6 +679,7 @@ function splitLevelExpRate(expVal){
   return { level, expPct };
 }
 
+/** 戰力顯示：1億358萬175 */
 function formatBattlePower(v){
   const n0 = toNumber(v);
   if (n0 === null) return "-";
@@ -676,6 +704,10 @@ function formatBattlePower(v){
   return out;
 }
 
+/* =========================
+   ✅ 並列排名工具（競賽排名：會跳號）
+   例：1,1,3,4...
+========================= */
 function sameNumber(a, b, eps = 1e-9){
   return (a !== null && b !== null && Number.isFinite(a) && Math.abs(a - b) <= eps);
 }
@@ -694,7 +726,7 @@ function buildCompetitionRankMap(sortedList, getVal){
     } else if (sameNumber(v, prevVal)){
       rank = prevRank;
     } else {
-      rank = i + 1;
+      rank = i + 1; // 競賽排名：跳號
     }
 
     m.set(r.rowIdx, rank);
@@ -703,7 +735,9 @@ function buildCompetitionRankMap(sortedList, getVal){
   }
   return m;
 }
+/* ========================= */
 
+/** 日期解析 */
 function parseDateLoose(s){
   if (!s) return null;
   const t = s.replace(" ", "T");
@@ -767,9 +801,12 @@ function tableHtml(headers, rows2d){
   return `<table>${thead}${tbody}</table>`;
 }
 
+/** ✅ 取得目前榜單使用的 worldKey：選全部就用 "__ALL__" */
 function worldKeyForTop(){
-  return worldSelect.value;
+  return worldSelect.value; // "__ALL__" or specific world
 }
+
+/** ✅ 依目前選擇刷新職業下拉（全部伺服器 = 全伺服器職業） */
 function refreshJobOptions(keepValue=true){
   const worldKey = worldKeyForTop();
   const prev = jobSelect.value;
@@ -802,6 +839,9 @@ function refreshJobOptions(keepValue=true){
   }
 }
 
+/* =========================
+   ✅ 附近榜（經驗/戰力）+ 上下 50 名
+========================= */
 function setAroundTab(metric){
   aroundState.metric = metric;
 
@@ -957,6 +997,7 @@ function shiftAround(deltaPages){
   aroundState.listStart = nextStart;
   renderAroundTable();
 }
+/* ========================= */
 
 async function loadData(){
   showOverlay("資料載入中…", "正在抓取最新資料，請稍候。");
@@ -992,6 +1033,7 @@ async function loadData(){
 
   setProgress(progressValue, "整理資料中…");
 
+  // ✅ 先做初步轉換
   let tmpRows = table.rows.map((r, idx) => {
     const c = r.c || [];
     const name  = normalizeText(c[iName]?.v);
@@ -1003,12 +1045,15 @@ async function loadData(){
     return { rowIdx: idx, name, world, job, exp, bp, updatedText: up.text || "-", updatedDate: up.date || null };
   }).filter(x => x.name && x.world);
 
+  // ✅ 過濾掉戰鬥力 >= 100 億 的異常資料（整筆排除）
   const beforeCount = tmpRows.length;
   tmpRows = tmpRows.filter(r => !(r.bp !== null && r.bp >= BP_EXCLUDE_MIN));
   const removedCount = beforeCount - tmpRows.length;
 
+  // ✅ 重新連號 rowIdx（避免 rank map 用舊 idx）
   rows = tmpRows.map((r, newIdx) => ({ ...r, rowIdx: newIdx }));
 
+  // ✅ 如果有移除，印 log（不影響 UI）
   if (removedCount > 0){
     console.warn(`已過濾異常戰鬥力資料：${removedCount} 筆（bp >= ${BP_EXCLUDE_MIN}）`);
   }
@@ -1072,6 +1117,7 @@ async function loadData(){
   if (qName) runSearch();
 }
 
+/** ✅ 排名包：worldKey="__ALL__" -> 全伺服器合併排名（並列同名次） */
 function buildRanks(worldKey){
   if (rankCache.has(worldKey)) return rankCache.get(worldKey);
 
@@ -1094,6 +1140,7 @@ function buildRanks(worldKey){
   return pack;
 }
 
+/** ✅ 職業內排名：worldKey="__ALL__" -> 全伺服器同職業合併排名（並列同名次） */
 function buildJobRanks(worldKey, job){
   const key = `${worldKey}||${job}`;
   if (jobRankCache.has(key)) return jobRankCache.get(key);
@@ -1131,6 +1178,7 @@ function runSearch(){
     return;
   }
 
+  // ✅ 只要有查詢，就記錄（不論有沒有查到）
   addSearchHistory(targetName, targetWorld, jobSelect.value || "__ALL_JOB__");
 
   let candidates = rows.filter(r => r.name === targetName);
@@ -1346,6 +1394,7 @@ function copyShareLink(){
   });
 }
 
+/* ====== 事件 ====== */
 searchBtn.addEventListener("click", ()=>setActiveTab("result"));
 shareBtn.addEventListener("click", copyShareLink);
 tabResult.addEventListener("click", ()=>setActiveTab("result"));
@@ -1353,16 +1402,19 @@ tabTopExp.addEventListener("click", ()=>setActiveTab("topExp"));
 tabTopBp.addEventListener("click", ()=>setActiveTab("topBp"));
 nameInput.addEventListener("keydown", (e)=>{ if (e.key==="Enter") setActiveTab("result"); });
 
+/* ✅ 搜尋紀錄：雙擊 input 出現 */
 nameInput.addEventListener("dblclick", ()=>{
   if (isHistoryShown()) hideHistoryDropdown();
   else showHistoryDropdown();
 });
+/* ✅ 當下拉開著時，輸入會即時篩選 */
 nameInput.addEventListener("input", ()=>{
   if (isHistoryShown()){
     renderHistoryDropdown(nameInput.value);
     positionHistoryDropdown();
   }
 });
+/* ✅ 鍵盤操作 */
 nameInput.addEventListener("keydown", (e)=>{
   if (e.key === "ArrowDown"){
     if (!isHistoryShown()){
@@ -1396,6 +1448,7 @@ nameInput.addEventListener("keydown", (e)=>{
     }
   }
 });
+/* ✅ 點空白處關閉下拉 */
 document.addEventListener("mousedown", (e)=>{
   if (!isHistoryShown()) return;
   const t = e.target;
@@ -1403,6 +1456,7 @@ document.addEventListener("mousedown", (e)=>{
   if (historyDropdownEl && historyDropdownEl.contains(t)) return;
   hideHistoryDropdown();
 });
+/* ✅ 捲動 / 視窗變更時重新定位 */
 window.addEventListener("resize", ()=>{
   if (isHistoryShown()) positionHistoryDropdown();
 });
@@ -1416,6 +1470,7 @@ tabAroundExp.addEventListener("click", ()=>{
 tabAroundBp.addEventListener("click", ()=>{
   if (!tabAroundBp.disabled) setAroundTab("bp");
 });
+
 btnUp50.addEventListener("click", ()=>shiftAround(-1));
 btnDown50.addEventListener("click", ()=>shiftAround(+1));
 
@@ -1427,11 +1482,13 @@ worldSelect.addEventListener("change", ()=>{
   if (activeTab === "topBp") renderTop("bp");
   if (activeTab === "result") runSearch();
 });
+
 jobSelect.addEventListener("change", ()=>{
   if (activeTab === "topExp") renderTop("exp");
   if (activeTab === "topBp") renderTop("bp");
 });
 
+/* ====== 先載入 ====== */
 loadData().catch(err=>{
   console.error(err);
   finishLoadingProgress(false);
