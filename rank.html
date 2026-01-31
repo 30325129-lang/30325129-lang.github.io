@@ -1,340 +1,288 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>經驗值/戰力 排名查詢</title>
-  <meta name="description" content="楓之谷角色經驗值%、戰鬥力、職業內排名查詢工具。支援伺服器篩選、前 100 名榜單與附近排名。提供欄位解讀、使用方式與常見問題。">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>經驗值/戰力 排名查詢</title>
+<style>
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC","Microsoft JhengHei",sans-serif;margin:24px;line-height:1.5}
+.card{max-width:1100px;margin:0 auto;border:1px solid #e5e7eb;border-radius:14px;padding:18px;box-shadow:0 2px 14px rgba(0,0,0,.05)}
+h1{margin:0 0 8px;font-size:20px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+input,select,button{font-size:14px;padding:10px 12px;border:1px solid #d1d5db;border-radius:10px}
+input{flex:1;min-width:220px}
+select{min-width:180px}
+button{cursor:pointer;background:#111827;color:#fff;border-color:#111827}
+button.secondary{background:#fff;color:#111827}
+button:disabled{opacity:.6;cursor:not-allowed}
+.muted{color:#6b7280;font-size:13px;margin-top:6px}
+.status{margin-top:10px;font-size:13px}
+.ok{color:#065f46}
+.bad{color:#991b1b}
+table{width:100%;border-collapse:collapse;margin-top:12px}
+th,td{border-bottom:1px solid #e5e7eb;padding:10px;text-align:left;font-size:14px;vertical-align:top}
+th{background:#f9fafb;position:sticky;top:0;z-index:1}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#f3f4f6;font-size:12px}
+.tabs{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.tabs button{background:#fff;color:#111827}
+.tabs button.active{background:#111827;color:#fff;border-color:#111827}
+.small{font-size:12px;color:#6b7280}
+.right{margin-left:auto}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+.nowrap{white-space:nowrap}
 
-  <style>
-    body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC","Microsoft JhengHei",sans-serif;margin:24px;line-height:1.5}
-    .card{max-width:1100px;margin:0 auto;border:1px solid #e5e7eb;border-radius:14px;padding:18px;box-shadow:0 2px 14px rgba(0,0,0,.05)}
-    h1{margin:0 0 8px;font-size:20px}
-    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    input,select,button{font-size:14px;padding:10px 12px;border:1px solid #d1d5db;border-radius:10px}
-    input{flex:1;min-width:220px}
-    select{min-width:180px}
-    button{cursor:pointer;background:#111827;color:#fff;border-color:#111827}
-    button.secondary{background:#fff;color:#111827}
-    button:disabled{opacity:.6;cursor:not-allowed}
-    .muted{color:#6b7280;font-size:13px;margin-top:6px}
-    .status{margin-top:10px;font-size:13px}
-    .ok{color:#065f46}
-    .bad{color:#991b1b}
-    table{width:100%;border-collapse:collapse;margin-top:12px}
-    th,td{border-bottom:1px solid #e5e7eb;padding:10px;text-align:left;font-size:14px;vertical-align:top}
-    th{background:#f9fafb;position:sticky;top:0;z-index:1}
-    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#f3f4f6;font-size:12px}
-    .tabs{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-    .tabs button{background:#fff;color:#111827}
-    .tabs button.active{background:#111827;color:#fff;border-color:#111827}
-    .small{font-size:12px;color:#6b7280}
-    .right{margin-left:auto}
-    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
-    .nowrap{white-space:nowrap}
+/* ✅ 靜態說明區（讓工具頁不是只有 Loading） */
+.intro{
+margin-top:10px;
+padding:10px 12px;
+border:1px solid #e5e7eb;
+border-radius:12px;
+background:#fafafa;
+}
+.intro a{color:#111827}
 
-    /* ✅ 靜態說明區（讓工具頁不是只有 JS / Loading） */
-    .intro{
-      margin-top:12px;
-      padding:14px 14px;
-      border:1px solid #e5e7eb;
-      border-radius:12px;
-      background:#fafafa;
-      line-height:1.85;
-    }
-    .intro h2{margin:0 0 6px;font-size:16px}
-    .intro h3{margin:14px 0 6px;font-size:14px}
-    .intro p{margin:6px 0}
-    .intro ul{margin:6px 0 6px 18px}
-    .intro li{margin:4px 0}
-    .intro a{color:#111827}
-    .intro .note{font-size:12px;color:#6b7280;margin-top:10px}
+/* ===== 全畫面 Loading Overlay ===== */
+.overlay{
+position:fixed;inset:0;z-index:9999;
+background:rgba(255,255,255,.78);
+backdrop-filter: blur(4px);
+display:none;
+align-items:center;
+justify-content:center;
+padding:24px;
+}
+.overlay.show{display:flex;}
+.overlay-card{
+width:min(560px, 100%);
+border:1px solid #e5e7eb;
+border-radius:16px;
+background:#fff;
+padding:18px 18px 16px;
+box-shadow:0 10px 30px rgba(0,0,0,.08);
+display:flex;
+gap:14px;
+align-items:flex-start;
+}
+.spinner{
+width:42px;height:42px;border-radius:999px;
+border:4px solid #e5e7eb;
+border-top-color:#111827;
+animation:spin 0.9s linear infinite;
+flex:0 0 auto;
+margin-top:2px;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.overlay-title{font-weight:700;margin:0 0 2px;font-size:15px}
+.overlay-sub{margin:0;color:#6b7280;font-size:13px}
 
-    /* ===== 全畫面 Loading Overlay（只在真正載入資料時顯示）===== */
-    .overlay{
-      position:fixed;inset:0;z-index:9999;
-      background:rgba(255,255,255,.78);
-      backdrop-filter: blur(4px);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      padding:24px;
-    }
-    .overlay.show{display:flex;}
-    .overlay-card{
-      width:min(560px, 100%);
-      border:1px solid #e5e7eb;
-      border-radius:16px;
-      background:#fff;
-      padding:18px 18px 16px;
-      box-shadow:0 10px 30px rgba(0,0,0,.08);
-      display:flex;
-      gap:14px;
-      align-items:flex-start;
-    }
-    .spinner{
-      width:42px;height:42px;border-radius:999px;
-      border:4px solid #e5e7eb;
-      border-top-color:#111827;
-      animation:spin 0.9s linear infinite;
-      flex:0 0 auto;
-      margin-top:2px;
-    }
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .overlay-title{font-weight:700;margin:0 0 2px;font-size:15px}
-    .overlay-sub{margin:0;color:#6b7280;font-size:13px}
+/* 進度條 */
+.progress-wrap{margin-top:10px}
+.progress{
+width:100%;
+height:10px;
+border-radius:999px;
+background:#eef2f7;
+overflow:hidden;
+border:1px solid #e5e7eb;
+}
+.progress-bar{
+height:100%;
+width:0%;
+background:#111827;
+border-radius:999px;
+transition:width .18s ease;
+}
+.progress-row{
+display:flex;
+justify-content:space-between;
+gap:10px;
+margin-top:8px;
+font-size:12px;
+color:#6b7280;
+}
+.progress-row .pct{font-variant-numeric:tabular-nums;color:#111827;font-weight:700}
 
-    /* 進度條 */
-    .progress-wrap{margin-top:10px}
-    .progress{
-      width:100%;
-      height:10px;
-      border-radius:999px;
-      background:#eef2f7;
-      overflow:hidden;
-      border:1px solid #e5e7eb;
-    }
-    .progress-bar{
-      height:100%;
-      width:0%;
-      background:#111827;
-      border-radius:999px;
-      transition:width .18s ease;
-    }
-    .progress-row{
-      display:flex;
-      justify-content:space-between;
-      gap:10px;
-      margin-top:8px;
-      font-size:12px;
-      color:#6b7280;
-    }
-    .progress-row .pct{font-variant-numeric:tabular-nums;color:#111827;font-weight:700}
+/* ✅ 查詢結果：附近榜控制區 */
+.around-controls{
+display:none;
+margin-top:10px;
+padding:10px;
+border:1px solid #e5e7eb;
+border-radius:12px;
+background:#fafafa;
+}
+.around-controls.show{display:block;}
+.around-top{
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+align-items:center;
+}
+.around-tabs{
+display:flex;
+gap:8px;
+flex-wrap:wrap;
+}
+.around-tabs button{
+background:#fff;color:#111827;
+border-color:#d1d5db;
+}
+.around-tabs button.active{
+background:#111827;color:#fff;border-color:#111827
+}
+.around-controls .hint{
+margin-top:6px;
+font-size:12px;
+color:#6b7280;
+}
 
-    /* ✅ 查詢結果：附近榜控制區 */
-    .around-controls{
-      display:none;
-      margin-top:10px;
-      padding:10px;
-      border:1px solid #e5e7eb;
-      border-radius:12px;
-      background:#fafafa;
-    }
-    .around-controls.show{display:block;}
-    .around-top{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-    .around-tabs{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-    }
-    .around-tabs button{
-      background:#fff;color:#111827;
-      border-color:#d1d5db;
-    }
-    .around-tabs button.active{
-      background:#111827;color:#fff;border-color:#111827
-    }
-    .around-controls .hint{
-      margin-top:6px;
-      font-size:12px;
-      color:#6b7280;
-    }
-
-    /* =========================
-       ✅ 搜尋紀錄下拉（LocalStorage）
-       - 雙擊名稱輸入框顯示
-       - 方向鍵上下選 / Enter 套用 / Esc 關閉
-    ========================= */
-    .history-dropdown{
-      position:fixed;
-      z-index:10001;
-      display:none;
-      border:1px solid #d1d5db;
-      border-radius:12px;
-      background:#fff;
-      box-shadow:0 10px 30px rgba(0,0,0,.10);
-      overflow:hidden;
-    }
-    .history-dropdown.show{display:block;}
-    .history-topbar{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      padding:8px 10px;
-      border-bottom:1px solid #e5e7eb;
-      background:#fafafa;
-    }
-    .history-title{
-      font-size:12px;
-      color:#6b7280;
-      user-select:none;
-    }
-    .history-clear{
-      font-size:12px;
-      padding:6px 8px;
-      border-radius:10px;
-      border:1px solid #d1d5db;
-      background:#fff;
-      color:#111827;
-      cursor:pointer;
-    }
-    .history-clear:hover{background:#f9fafb;}
-    .history-list{
-      max-height:280px;
-      overflow:auto;
-    }
-    .history-item{
-      width:100%;
-      text-align:left;
-      padding:10px 12px;
-      border:0;
-      border-bottom:1px solid #f3f4f6;
-      background:#fff;
-      cursor:pointer;
-      font-size:14px;
-      color:#111827;
-    }
-    .history-item:last-child{border-bottom:0;}
-    .history-item:hover{background:#f9fafb;}
-    .history-item.active{background:#eef2ff;}
-    .history-name{font-weight:700;}
-    .history-meta{
-      margin-top:2px;
-      font-size:12px;
-      color:#6b7280;
-    }
-    .history-empty{
-      padding:12px;
-      font-size:13px;
-      color:#6b7280;
-    }
-  </style>
-  <!-- ✅ 注意：rank.html 故意不放 AdSense script；本站審核用的內容與說明在本頁已完整呈現 -->
+/* =========================
+      ✅ 搜尋紀錄下拉（LocalStorage）
+      - 雙擊名稱輸入框顯示
+      - 方向鍵上下選 / Enter 套用 / Esc 關閉
+   ========================= */
+.history-dropdown{
+position:fixed;
+z-index:10001;
+display:none;
+border:1px solid #d1d5db;
+border-radius:12px;
+background:#fff;
+box-shadow:0 10px 30px rgba(0,0,0,.10);
+overflow:hidden;
+}
+.history-dropdown.show{display:block;}
+.history-topbar{
+display:flex;
+align-items:center;
+justify-content:space-between;
+gap:10px;
+padding:8px 10px;
+border-bottom:1px solid #e5e7eb;
+background:#fafafa;
+}
+.history-title{
+font-size:12px;
+color:#6b7280;
+user-select:none;
+}
+.history-clear{
+font-size:12px;
+padding:6px 8px;
+border-radius:10px;
+border:1px solid #d1d5db;
+background:#fff;
+color:#111827;
+cursor:pointer;
+}
+.history-clear:hover{background:#f9fafb;}
+.history-list{
+max-height:280px;
+overflow:auto;
+}
+.history-item{
+width:100%;
+text-align:left;
+padding:10px 12px;
+border:0;
+border-bottom:1px solid #f3f4f6;
+background:#fff;
+cursor:pointer;
+font-size:14px;
+color:#111827;
+}
+.history-item:last-child{border-bottom:0;}
+.history-item:hover{background:#f9fafb;}
+.history-item.active{background:#eef2ff;}
+.history-name{font-weight:700;}
+.history-meta{
+margin-top:2px;
+font-size:12px;
+color:#6b7280;
+}
+.history-empty{
+padding:12px;
+font-size:13px;
+color:#6b7280;
+}
+</style>
+<!-- ✅ 注意：rank.html 故意不放 AdSense script，避免 Loading 畫面投放又被判定「沒有發布內容」 -->
 </head>
 <body>
 
-  <!-- 全畫面 Loading + 進度條（✅ 只在首次查詢/切榜需要載入資料時出現） -->
-  <div id="overlay" class="overlay" aria-live="polite" aria-busy="true">
-    <div class="overlay-card">
-      <div class="spinner" aria-hidden="true"></div>
-      <div style="flex:1">
-        <div id="overlayTitle" class="overlay-title">資料載入中…</div>
-        <p id="overlaySub" class="overlay-sub">正在抓取最新資料，請稍候。</p>
+<!-- 全畫面 Loading + 進度條 -->
+<div id="overlay" class="overlay" aria-live="polite" aria-busy="true">
+<div class="overlay-card">
+<div class="spinner" aria-hidden="true"></div>
+<div style="flex:1">
+<div id="overlayTitle" class="overlay-title">資料載入中…</div>
+<p id="overlaySub" class="overlay-sub">正在抓取最新資料，請稍候。</p>
 
-        <div class="progress-wrap">
-          <div class="progress"><div id="progressBar" class="progress-bar"></div></div>
-          <div class="progress-row">
-            <span id="progressHint">連線中…</span>
-            <span class="pct" id="progressPct">0%</span>
-          </div>
-        </div>
+<div class="progress-wrap">
+<div class="progress"><div id="progressBar" class="progress-bar"></div></div>
+<div class="progress-row">
+<span id="progressHint">連線中…</span>
+<span class="pct" id="progressPct">0%</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="card">
+<h1>挑戰者伺服器（或其他伺服器）經驗值 / 戰力 / 職業內排名 查詢</h1>
+
+    <div class="intro">
+      <div class="muted">
+        本頁為查詢工具頁。若要看完整介紹/FAQ 請回 <a href="./index.html"><b>首頁</b></a>；
+        隱私權政策請見 <a href="./privacy.html"><b>privacy.html</b></a>。
+  
       </div>
     </div>
-  </div>
 
-  <div class="card">
-    <h1>挑戰者伺服器（或其他伺服器）經驗值 / 戰力 / 職業內排名 查詢</h1>
+<div class="row" style="margin-top:12px">
+<!-- ✅ 雙擊這個輸入框會出現「搜尋紀錄」 -->
+<input id="nameInput" placeholder="輸入角色名稱（例：Ezra蓮）" />
+<select id="worldSelect"></select>
 
-    <!-- ✅ 靜態內容：即使 JS 關掉也能閱讀（AdSense 最在意這塊） -->
-    <section class="intro" id="about" aria-label="工具說明與常見問題">
-      <h2>這個工具在做什麼？</h2>
-      <p>
-        這是一個非官方的排名查詢工具，目標是把「角色等級 / 經驗值% / 戰鬥力 / 職業內排名」整理成更容易理解的格式。
-        你可以用它快速定位：自己的進度大概落在伺服器的哪個區間、同職業大概排在哪、以及和附近玩家差距有多大。
-      </p>
+<!-- 職業篩選（主要用在前100名） -->
+<select id="jobSelect" title="前100名可用：職業篩選"></select>
 
-      <h3>資料來源與更新</h3>
-      <p>
-        本站會定期抓取資料並建立索引，因為來源端更新節奏、快取或同步流程，可能出現延遲、缺漏或短時間查不到的情況。
-        若你剛改名、剛換裝或剛提升戰鬥力，通常過一段時間再查會比較準。
-      </p>
+<button id="searchBtn">查詢</button>
+<button id="shareBtn" class="secondary">複製查詢連結</button>
+</div>
 
-      <h3>欄位怎麼看？</h3>
-      <ul>
-        <li><strong>等級 / 經驗值%</strong>：以「等級 + 經驗值%」拆開顯示，方便比較同等級進度差距。</li>
-        <li><strong>戰鬥力</strong>：以「兆/億/萬」格式顯示，方便快速掃描排行榜。</li>
-        <li><strong>經驗排名 / 戰力排名</strong>：同數值會採用並列名次（競賽排名），所以可能出現 1,1,3 這種跳號。</li>
-        <li><strong>職業內排名</strong>：只跟同職業比較，更適合看「同職業」的相對進度。</li>
-      </ul>
+<div class="tabs">
+<button id="tabResult" class="active">查詢結果</button>
+<button id="tabTopExp">前 100 名（經驗）</button>
+<button id="tabTopBp">前 100 名（戰力）</button>
+<span class="right small" id="metaInfo"></span>
+</div>
 
-      <h3>使用方式（建議）</h3>
-      <ul>
-        <li>先輸入角色名稱 → 選伺服器（或全部）→ 按「查詢」。</li>
-        <li>如果只查到一筆資料，會自動顯示「附近排名」，可往上/往下翻每次 50 名。</li>
-        <li>想看整體趨勢：切到「前 100 名（經驗/戰力）」並搭配職業篩選。</li>
-      </ul>
+<div id="status" class="status"></div>
 
-      <h3>常見問題</h3>
-      <p><strong>Q：為什麼查不到我？</strong><br>
-        可能是名稱不完全一致、資料尚未同步、或來源端暫時延遲。你可以改用「包含關鍵字」的模糊列表（系統會顯示前 20 筆相近名稱）再確認。
-      </p>
-      <p><strong>Q：為什麼戰鬥力看起來怪怪的？</strong><br>
-        若資料出現明顯異常（例如大到不合理），本頁會自動過濾極端異常值以避免榜單被污染，但仍建議以遊戲內實際資訊為準。
-      </p>
+<!-- ✅ 查詢自己時：附近榜（經驗/戰力 Tab + 上下 50 名） -->
+<div id="aroundControls" class="around-controls">
+<div class="around-top">
+<div class="around-tabs">
+<button id="tabAroundExp" class="active">附近（經驗）</button>
+<button id="tabAroundBp">附近（戰力）</button>
+</div>
 
-      <h3>聯絡方式 / 免責聲明</h3>
-      <p>
-        本站為非官方資訊整理工具，僅供查詢與個人參考；資料可能因更新/延遲/缺漏而與實際狀況不同。若你發現資料明顯錯誤或希望回報問題，請來信：
-        <a href="mailto:s85157225@email.com">s85157225@email.com</a>
-        
-      </p>
+<button id="btnUp50" class="secondary">⬆ 顯示上方 50 名</button>
+<button id="btnDown50" class="secondary">⬇ 顯示下方 50 名</button>
 
-      <noscript>
-        <p><strong>提示：</strong>你的瀏覽器目前停用 JavaScript。查詢功能需要 JavaScript 才能運作，但你仍可閱讀本頁的工具說明、欄位解讀與常見問題。</p>
-      </noscript>
+<span class="right small" id="aroundMeta"></span>
+</div>
+<div class="hint" id="aroundHint">（以所選榜單為基準，顯示你附近的排名，可一直往上/往下翻）</div>
+</div>
 
-      <p class="note">註：為了讓頁面在審核/無 JS 環境也能被判讀為「有內容」，本段說明會常駐顯示。</p>
-    </section>
+<div id="content"></div>
 
-    <div class="row" style="margin-top:12px">
-      <!-- ✅ 雙擊這個輸入框會出現「搜尋紀錄」 -->
-      <input id="nameInput" placeholder="輸入角色名稱（例：Ezra蓮）" />
-      <select id="worldSelect"></select>
-
-      <!-- 職業篩選（主要用在前100名） -->
-      <select id="jobSelect" title="前100名可用：職業篩選"></select>
-
-      <button id="searchBtn">查詢</button>
-      <button id="shareBtn" class="secondary">複製查詢連結</button>
-    </div>
-
-    <div class="tabs">
-      <button id="tabResult" class="active">查詢結果</button>
-      <button id="tabTopExp">前 100 名（經驗）</button>
-      <button id="tabTopBp">前 100 名（戰力）</button>
-      <span class="right small" id="metaInfo"></span>
-    </div>
-
-    <div id="status" class="status"></div>
-
-    <!-- ✅ 查詢自己時：附近榜（經驗/戰力 Tab + 上下 50 名） -->
-    <div id="aroundControls" class="around-controls">
-      <div class="around-top">
-        <div class="around-tabs">
-          <button id="tabAroundExp" class="active">附近（經驗）</button>
-          <button id="tabAroundBp">附近（戰力）</button>
-        </div>
-
-        <button id="btnUp50" class="secondary">⬆ 顯示上方 50 名</button>
-        <button id="btnDown50" class="secondary">⬇ 顯示下方 50 名</button>
-
-        <span class="right small" id="aroundMeta"></span>
-      </div>
-      <div class="hint" id="aroundHint">（以所選榜單為基準，顯示你附近的排名，可一直往上/往下翻）</div>
-    </div>
-
-    <div id="content"></div>
-
-    <div class="muted" style="margin-top:14px">
-      ← <a href="./index.html">回首頁</a>　|　<a href="./privacy.html">隱私權政策</a>
-    </div>
-  </div>
+<div class="muted" style="margin-top:14px">
+← <a href="./index.html">回首頁</a>　|　<a href="./privacy.html">隱私權政策</a>
+</div>
+</div>
 
 <script>
 /** ====== 你只需要改這兩個 ====== */
@@ -375,10 +323,6 @@ const btnDown50 = $("btnDown50");
 const aroundMeta = $("aroundMeta");
 const aroundHint = $("aroundHint");
 
-/** ✅ 資料載入狀態（重點：不在頁面一進來就載入） */
-let dataReady = false;
-let dataPromise = null;
-
 let rows = [];              // {rowIdx, name, world, job, exp, bp, updatedText, updatedDate}
 let worlds = [];
 let rankCache = new Map();      // key(world or "__ALL__") -> {expRank,bpRank,expSorted,bpSorted}
@@ -389,18 +333,18 @@ let activeTab = "result";
 
 /* ✅ 附近榜狀態 */
 let aroundState = {
-  enabled: false,
-  metric: "exp",            // "exp" | "bp"
-  worldKey: "__ALL__",      // "__ALL__" or specific world
-  centerRowIdx: null,       // 以哪一筆資料當中心（rowIdx）
-  listStart: 0,             // 目前顯示區間起點（0-based index on sorted list）
-  pageSize: 50
+enabled: false,
+metric: "exp",            // "exp" | "bp"
+worldKey: "__ALL__",      // "__ALL__" or specific world
+centerRowIdx: null,       // 以哪一筆資料當中心（rowIdx）
+listStart: 0,             // 目前顯示區間起點（0-based index on sorted list）
+pageSize: 50
 };
 
 /* =========================
-   ✅ 搜尋紀錄（LocalStorage）
-   - 雙擊名稱輸入框顯示
-   - Up/Down 選取、Enter 套用、Esc 關閉
+  ✅ 搜尋紀錄（LocalStorage）
+  - 雙擊名稱輸入框顯示
+  - Up/Down 選取、Enter 套用、Esc 關閉
 ========================= */
 const HISTORY_KEY = "ms_rank_search_history_v1";
 const HISTORY_LIMIT = 25;
@@ -411,221 +355,218 @@ let historyActiveIndex = -1;
 let historyFiltered = [];
 
 function safeParseJson(s, fallback){
-  try { return JSON.parse(s); } catch { return fallback; }
+try { return JSON.parse(s); } catch { return fallback; }
 }
 function loadSearchHistory(){
-  try{
-    const raw = localStorage.getItem(HISTORY_KEY);
-    const arr = safeParseJson(raw, []);
-    return Array.isArray(arr) ? arr : [];
-  } catch {
-    return [];
-  }
+try{
+const raw = localStorage.getItem(HISTORY_KEY);
+const arr = safeParseJson(raw, []);
+return Array.isArray(arr) ? arr : [];
+} catch {
+return [];
+}
 }
 function saveSearchHistory(arr){
-  try{
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(arr));
-  } catch {
-    // private mode / no quota：忽略
-  }
+try{
+localStorage.setItem(HISTORY_KEY, JSON.stringify(arr));
+} catch {
+// private mode / no quota：忽略
+}
 }
 function normalizeHistoryKey(name, world, job){
-  return `${name}||${world}||${job}`;
+return `${name}||${world}||${job}`;
 }
 function addSearchHistory(name, world, job){
-  const n = (name ?? "").toString().trim();
-  if (!n) return;
+const n = (name ?? "").toString().trim();
+if (!n) return;
 
-  const w = (world ?? "__ALL__").toString();
-  const j = (job ?? "__ALL_JOB__").toString();
-  const key = normalizeHistoryKey(n, w, j);
+const w = (world ?? "__ALL__").toString();
+const j = (job ?? "__ALL_JOB__").toString();
+const key = normalizeHistoryKey(n, w, j);
 
-  const list = loadSearchHistory();
-  const now = Date.now();
+const list = loadSearchHistory();
+const now = Date.now();
 
-  // 去重：相同 name+world+job 移到最前面
-  const next = [];
-  next.push({ key, name: n, world: w, job: j, ts: now });
+// 去重：相同 name+world+job 移到最前面
+const next = [];
+next.push({ key, name: n, world: w, job: j, ts: now });
 
-  for (const it of list){
-    if (!it) continue;
-    if (it.key === key) continue;
-    if ((it.name ?? "").toString().trim() === "" ) continue;
-    next.push(it);
-    if (next.length >= HISTORY_LIMIT) break;
-  }
-  saveSearchHistory(next);
+for (const it of list){
+if (!it) continue;
+if (it.key === key) continue;
+if ((it.name ?? "").toString().trim() === "" ) continue;
+next.push(it);
+if (next.length >= HISTORY_LIMIT) break;
+}
+saveSearchHistory(next);
 }
 function clearSearchHistory(){
-  try{ localStorage.removeItem(HISTORY_KEY); } catch {}
+try{ localStorage.removeItem(HISTORY_KEY); } catch {}
 }
 function ensureHistoryDropdown(){
-  if (historyDropdownEl) return;
+if (historyDropdownEl) return;
 
-  historyDropdownEl = document.createElement("div");
-  historyDropdownEl.id = "historyDropdown";
-  historyDropdownEl.className = "history-dropdown";
-  historyDropdownEl.setAttribute("role", "listbox");
+historyDropdownEl = document.createElement("div");
+historyDropdownEl.id = "historyDropdown";
+historyDropdownEl.className = "history-dropdown";
+historyDropdownEl.setAttribute("role", "listbox");
 
-  // 防止點下拉時 input 失焦導致先關掉
-  historyDropdownEl.addEventListener("mousedown", (e)=>{ e.preventDefault(); });
+// 防止點下拉時 input 失焦導致先關掉
+historyDropdownEl.addEventListener("mousedown", (e)=>{ e.preventDefault(); });
 
-  historyDropdownEl.addEventListener("click", (e)=>{
-    const clearBtn = e.target.closest("[data-action='clear']");
-    if (clearBtn){
-      clearSearchHistory();
-      renderHistoryDropdown(nameInput.value);
-      setStatus("已清除搜尋紀錄。", true);
-      return;
-    }
-    const btn = e.target.closest("[data-hindex]");
-    if (!btn) return;
-    const idx = Number(btn.getAttribute("data-hindex"));
-    if (!Number.isFinite(idx)) return;
-    applyHistoryByIndex(idx);
-  });
+historyDropdownEl.addEventListener("click", (e)=>{
+const clearBtn = e.target.closest("[data-action='clear']");
+if (clearBtn){
+clearSearchHistory();
+renderHistoryDropdown(nameInput.value);
+setStatus("已清除搜尋紀錄。", true);
+return;
+}
+const btn = e.target.closest("[data-hindex]");
+if (!btn) return;
+const idx = Number(btn.getAttribute("data-hindex"));
+if (!Number.isFinite(idx)) return;
+applyHistoryByIndex(idx);
+});
 
-  document.body.appendChild(historyDropdownEl);
+document.body.appendChild(historyDropdownEl);
 }
 function isHistoryShown(){
-  return !!historyDropdownEl && historyDropdownEl.classList.contains("show");
+return !!historyDropdownEl && historyDropdownEl.classList.contains("show");
 }
 function positionHistoryDropdown(){
-  if (!historyDropdownEl) return;
+if (!historyDropdownEl) return;
 
-  const rect = nameInput.getBoundingClientRect();
-  const margin = 6;
+const rect = nameInput.getBoundingClientRect();
+const margin = 6;
 
-  // 盡量跟輸入框同寬
-  let left = rect.left;
-  let width = rect.width;
+// 盡量跟輸入框同寬
+let left = rect.left;
+let width = rect.width;
 
-  // 避免超出視窗
-  const maxRight = window.innerWidth - 8;
-  if (left + width > maxRight){
-    left = Math.max(8, maxRight - width);
-  }
+// 避免超出視窗
+const maxRight = window.innerWidth - 8;
+if (left + width > maxRight){
+left = Math.max(8, maxRight - width);
+}
 
-  // 下拉高度：避免超出底部
-  const top = rect.bottom + margin;
-  const maxH = Math.max(160, window.innerHeight - top - 12);
+// 下拉高度：避免超出底部
+const top = rect.bottom + margin;
+const maxH = Math.max(160, window.innerHeight - top - 12);
 
-  historyDropdownEl.style.left = Math.round(left) + "px";
-  historyDropdownEl.style.top = Math.round(top) + "px";
-  historyDropdownEl.style.width = Math.round(width) + "px";
-  historyDropdownEl.style.maxHeight = Math.round(maxH) + "px";
+historyDropdownEl.style.left = Math.round(left) + "px";
+historyDropdownEl.style.top = Math.round(top) + "px";
+historyDropdownEl.style.width = Math.round(width) + "px";
+historyDropdownEl.style.maxHeight = Math.round(maxH) + "px";
 }
 function worldTextOf(v){
-  return (v === "__ALL__") ? "全部伺服器" : v;
+return (v === "__ALL__") ? "全部伺服器" : v;
 }
 function jobTextOf(v){
-  return (v === "__ALL_JOB__") ? "全部職業" : v;
+return (v === "__ALL_JOB__") ? "全部職業" : v;
 }
 function formatTime(ts){
-  try{
-    if (!ts) return "";
-    return new Date(ts).toLocaleString("zh-TW");
-  } catch { return ""; }
+try{
+if (!ts) return "";
+return new Date(ts).toLocaleString("zh-TW");
+} catch { return ""; }
 }
 function renderHistoryDropdown(filterText){
-  ensureHistoryDropdown();
+ensureHistoryDropdown();
 
-  const q = (filterText ?? "").toString().trim();
-  const list = loadSearchHistory();
+const q = (filterText ?? "").toString().trim();
+const list = loadSearchHistory();
 
-  // 篩選：輸入框有字就只顯示包含字串的
-  let filtered = list;
-  if (q){
-    filtered = list.filter(it => ((it?.name ?? "") + "").includes(q));
-  }
+// 篩選：輸入框有字就只顯示包含字串的
+let filtered = list;
+if (q){
+filtered = list.filter(it => ((it?.name ?? "") + "").includes(q));
+}
 
-  historyFiltered = filtered.slice(0, HISTORY_LIMIT);
-  historyActiveIndex = Math.min(historyActiveIndex, historyFiltered.length - 1);
+historyFiltered = filtered.slice(0, HISTORY_LIMIT);
+historyActiveIndex = Math.min(historyActiveIndex, historyFiltered.length - 1);
 
-  let html = `
-    <div class="history-topbar">
-      <div class="history-title">搜尋紀錄（雙擊可叫出｜↑↓選擇 Enter 套用 Esc 關閉）</div>
-      <button type="button" class="history-clear" data-action="clear">清除</button>
-    </div>
-  `;
+let html = `
+   <div class="history-topbar">
+     <div class="history-title">搜尋紀錄（雙擊可叫出｜↑↓選擇 Enter 套用 Esc 關閉）</div>
+     <button type="button" class="history-clear" data-action="clear">清除</button>
+   </div>
+ `;
 
-  if (!historyFiltered.length){
-    html += `<div class="history-empty">目前沒有搜尋紀錄。</div>`;
-  } else {
-    html += `<div class="history-list">`;
-    historyFiltered.forEach((it, idx)=>{
-      const active = (idx === historyActiveIndex) ? " active" : "";
-      const name = escapeHtml(it?.name ?? "");
-      const w = escapeHtml(worldTextOf(it?.world ?? "__ALL__"));
-      const j = escapeHtml(jobTextOf(it?.job ?? "__ALL_JOB__"));
-      const t = escapeHtml(formatTime(it?.ts));
-      html += `
-        <button type="button" class="history-item${active}" data-hindex="${idx}">
-          <div><span class="history-name">${name}</span></div>
-          <div class="history-meta">${w}　|　${j}${t ? "　|　" + t : ""}</div>
-        </button>
-      `;
-    });
-    html += `</div>`;
-  }
+if (!historyFiltered.length){
+html += `<div class="history-empty">目前沒有搜尋紀錄。</div>`;
+} else {
+html += `<div class="history-list">`;
+historyFiltered.forEach((it, idx)=>{
+const active = (idx === historyActiveIndex) ? " active" : "";
+const name = escapeHtml(it?.name ?? "");
+const w = escapeHtml(worldTextOf(it?.world ?? "__ALL__"));
+const j = escapeHtml(jobTextOf(it?.job ?? "__ALL_JOB__"));
+const t = escapeHtml(formatTime(it?.ts));
+html += `
+       <button type="button" class="history-item${active}" data-hindex="${idx}">
+         <div><span class="history-name">${name}</span></div>
+         <div class="history-meta">${w}　|　${j}${t ? "　|　" + t : ""}</div>
+       </button>
+     `;
+});
+html += `</div>`;
+}
 
-  historyDropdownEl.innerHTML = html;
+historyDropdownEl.innerHTML = html;
 }
 function showHistoryDropdown(){
-  ensureHistoryDropdown();
-  positionHistoryDropdown();
-  historyOpen = true;
+ensureHistoryDropdown();
+positionHistoryDropdown();
+historyOpen = true;
 
-  // 預設選第一筆
-  historyActiveIndex = 0;
-  renderHistoryDropdown(nameInput.value);
+// 預設選第一筆
+historyActiveIndex = 0;
+renderHistoryDropdown(nameInput.value);
 
-  historyDropdownEl.classList.add("show");
+historyDropdownEl.classList.add("show");
 }
 function hideHistoryDropdown(){
-  if (!historyDropdownEl) return;
-  historyOpen = false;
-  historyActiveIndex = -1;
-  historyFiltered = [];
-  historyDropdownEl.classList.remove("show");
+if (!historyDropdownEl) return;
+historyOpen = false;
+historyActiveIndex = -1;
+historyFiltered = [];
+historyDropdownEl.classList.remove("show");
 }
 function moveHistoryActive(delta){
-  if (!historyFiltered.length) return;
-  const n = historyFiltered.length;
-  let next = historyActiveIndex;
-  if (!Number.isFinite(next) || next < 0) next = 0;
-  next = Math.max(0, Math.min(n - 1, next + delta));
-  historyActiveIndex = next;
-  renderHistoryDropdown(nameInput.value);
+if (!historyFiltered.length) return;
+const n = historyFiltered.length;
+let next = historyActiveIndex;
+if (!Number.isFinite(next) || next < 0) next = 0;
+next = Math.max(0, Math.min(n - 1, next + delta));
+historyActiveIndex = next;
+renderHistoryDropdown(nameInput.value);
 
-  // 確保可見
-  const btn = historyDropdownEl.querySelector(`.history-item[data-hindex="${next}"]`);
-  if (btn && btn.scrollIntoView){
-    btn.scrollIntoView({ block: "nearest" });
-  }
+// 確保可見
+const btn = historyDropdownEl.querySelector(`.history-item[data-hindex="${next}"]`);
+if (btn && btn.scrollIntoView){
+btn.scrollIntoView({ block: "nearest" });
+}
 }
 function applyHistoryByIndex(idx){
-  const it = historyFiltered[idx];
-  if (!it) return;
+const it = historyFiltered[idx];
+if (!it) return;
 
-  nameInput.value = (it.name ?? "").toString();
+nameInput.value = (it.name ?? "").toString();
 
-  // world / job 盡量套用（若找不到選項就退回全部）
-  const wantWorld = (it.world ?? "__ALL__").toString();
-  const hasWorld = Array.from(worldSelect.options).some(o => o.value === wantWorld);
-  worldSelect.value = hasWorld ? wantWorld : "__ALL__";
+// world / job 盡量套用（若找不到選項就退回全部）
+const wantWorld = (it.world ?? "__ALL__").toString();
+const hasWorld = Array.from(worldSelect.options).some(o => o.value === wantWorld);
+worldSelect.value = hasWorld ? wantWorld : "__ALL__";
 
-  if (dataReady){
-    refreshJobOptions(false);
-    const wantJob = (it.job ?? "__ALL_JOB__").toString();
-    const hasJob = Array.from(jobSelect.options).some(o => o.value === wantJob);
-    jobSelect.value = hasJob ? wantJob : "__ALL_JOB__";
-  } else {
-    jobSelect.value = "__ALL_JOB__";
-  }
+refreshJobOptions(false);
 
-  hideHistoryDropdown();
-  setActiveTab("result");
+const wantJob = (it.job ?? "__ALL_JOB__").toString();
+const hasJob = Array.from(jobSelect.options).some(o => o.value === wantJob);
+jobSelect.value = hasJob ? wantJob : "__ALL_JOB__";
+
+hideHistoryDropdown();
+setActiveTab("result");
 }
 /* ========================= */
 
@@ -635,871 +576,822 @@ let progressTimer = null;
 let progressTicks = 0;
 
 function setProgress(p, hint){
-  progressValue = Math.max(0, Math.min(100, p));
-  const pct = Math.round(progressValue);
-  progressBar.style.width = pct + "%";
-  progressPct.textContent = pct + "%";
-  if (typeof hint === "string") progressHint.textContent = hint;
+progressValue = Math.max(0, Math.min(100, p));
+const pct = Math.round(progressValue);
+progressBar.style.width = pct + "%";
+progressPct.textContent = pct + "%";
+if (typeof hint === "string") progressHint.textContent = hint;
 }
 function startLoadingProgress(){
-  stopLoadingProgress();
-  progressValue = 0;
-  progressTicks = 0;
-  setProgress(1, "連線中…");
-  progressTimer = setInterval(()=>{
-    progressTicks++;
-    if (progressTicks === 8)  progressHint.textContent = "下載資料中…";
-    if (progressTicks === 28) progressHint.textContent = "解析資料中…";
-    if (progressTicks === 55) progressHint.textContent = "整理清單中…";
-    const target = 92;
-    const step = Math.max(0.35, (target - progressValue) * 0.06);
-    progressValue = Math.min(target, progressValue + step);
-    setProgress(progressValue);
-  }, 120);
+stopLoadingProgress();
+progressValue = 0;
+progressTicks = 0;
+setProgress(1, "連線中…");
+progressTimer = setInterval(()=>{
+progressTicks++;
+if (progressTicks === 8)  progressHint.textContent = "下載資料中…";
+if (progressTicks === 28) progressHint.textContent = "解析資料中…";
+if (progressTicks === 55) progressHint.textContent = "整理清單中…";
+const target = 92;
+const step = Math.max(0.35, (target - progressValue) * 0.06);
+progressValue = Math.min(target, progressValue + step);
+setProgress(progressValue);
+}, 120);
 }
 function stopLoadingProgress(){
-  if (progressTimer){
-    clearInterval(progressTimer);
-    progressTimer = null;
-  }
+if (progressTimer){
+clearInterval(progressTimer);
+progressTimer = null;
+}
 }
 function finishLoadingProgress(ok){
-  stopLoadingProgress();
-  if (ok){
-    setProgress(98, "即將完成…");
-    setTimeout(()=>setProgress(100, "完成"), 120);
-  } else {
-    setProgress(100, "失敗");
-  }
+stopLoadingProgress();
+if (ok){
+setProgress(98, "即將完成…");
+setTimeout(()=>setProgress(100, "完成"), 120);
+} else {
+setProgress(100, "失敗");
+}
 }
 /* ================================================ */
 
 function setUiDisabled(disabled){
-  searchBtn.disabled = disabled;
-  shareBtn.disabled = disabled;
-  tabResult.disabled = disabled;
-  tabTopExp.disabled = disabled;
-  tabTopBp.disabled = disabled;
-  nameInput.disabled = disabled;
-  worldSelect.disabled = disabled;
-  jobSelect.disabled = disabled;
+searchBtn.disabled = disabled;
+shareBtn.disabled = disabled;
+tabResult.disabled = disabled;
+tabTopExp.disabled = disabled;
+tabTopBp.disabled = disabled;
+nameInput.disabled = disabled;
+worldSelect.disabled = disabled;
+jobSelect.disabled = disabled;
 
-  tabAroundExp.disabled = disabled;
-  tabAroundBp.disabled = disabled;
-  btnUp50.disabled = disabled;
-  btnDown50.disabled = disabled;
+tabAroundExp.disabled = disabled;
+tabAroundBp.disabled = disabled;
+btnUp50.disabled = disabled;
+btnDown50.disabled = disabled;
 }
 function showOverlay(title="資料載入中…", sub="正在抓取最新資料，請稍候。"){
-  overlayTitle.textContent = title;
-  overlaySub.textContent = sub;
-  overlay.classList.add("show");
-  setUiDisabled(true);
-  startLoadingProgress();
+overlayTitle.textContent = title;
+overlaySub.textContent = sub;
+overlay.classList.add("show");
+setUiDisabled(true);
+startLoadingProgress();
 }
 function hideOverlay(){
-  overlay.classList.remove("show");
-  setUiDisabled(false);
+overlay.classList.remove("show");
+setUiDisabled(false);
 }
 
 function setStatus(msg, ok=true){
-  statusEl.textContent = msg;
-  statusEl.className = "status " + (ok ? "ok" : "bad");
+statusEl.textContent = msg;
+statusEl.className = "status " + (ok ? "ok" : "bad");
 }
 function normalizeText(v){
-  const s = (v ?? "").toString();
-  return s.replace(/\u00A0/g,"").replace(/\u3000/g,"").trim();
+const s = (v ?? "").toString();
+return s.replace(/\u00A0/g,"").replace(/\u3000/g,"").trim();
 }
 function toNumber(v){
-  if (v === null || v === undefined) return null;
-  if (typeof v === "number" && Number.isFinite(v)) return v;
-  const s = normalizeText(v);
-  if (!s) return null;
-  const n = Number(s.replace(/,/g,""));
-  return Number.isFinite(n) ? n : null;
+if (v === null || v === undefined) return null;
+if (typeof v === "number" && Number.isFinite(v)) return v;
+const s = normalizeText(v);
+if (!s) return null;
+const n = Number(s.replace(/,/g,""));
+return Number.isFinite(n) ? n : null;
 }
 
 /** 拆等級 / 經驗值%（✅ 去掉前導 0：067.096 -> 67.096） */
 function splitLevelExpRate(expVal){
-  if (expVal === null || expVal === undefined || !Number.isFinite(expVal)) {
-    return { level: "-", expPct: "-" };
-  }
+if (expVal === null || expVal === undefined || !Number.isFinite(expVal)) {
+return { level: "-", expPct: "-" };
+}
 
-  let level = Math.floor(expVal / 1000);
-  let rem = expVal - level * 1000;
-  if (rem >= 999.9995) { level += 1; rem = 0; }
+let level = Math.floor(expVal / 1000);
+let rem = expVal - level * 1000;
+if (rem >= 999.9995) { level += 1; rem = 0; }
 
-  const remFixed = rem.toFixed(3);
-  const [i, d] = remFixed.split(".");
+const remFixed = rem.toFixed(3);
+const [i, d] = remFixed.split(".");
 
-  const intPart = Number.parseInt(i, 10);
-  const cleanI = Number.isFinite(intPart) ? String(intPart) : (i || "0");
+const intPart = Number.parseInt(i, 10);
+const cleanI = Number.isFinite(intPart) ? String(intPart) : (i || "0");
 
-  const expPct = cleanI + "." + d;
-  return { level, expPct };
+const expPct = cleanI + "." + d;
+return { level, expPct };
 }
 
 /** 戰力顯示：1億358萬175 */
 function formatBattlePower(v){
-  const n0 = toNumber(v);
-  if (n0 === null) return "-";
-  let n = Math.floor(n0);
-  if (!Number.isFinite(n)) return "-";
+const n0 = toNumber(v);
+if (n0 === null) return "-";
+let n = Math.floor(n0);
+if (!Number.isFinite(n)) return "-";
 
-  const units = [
-    { value: 1e12, label: "兆" },
-    { value: 1e8,  label: "億" },
-    { value: 1e4,  label: "萬" },
-  ];
+const units = [
+{ value: 1e12, label: "兆" },
+{ value: 1e8,  label: "億" },
+{ value: 1e4,  label: "萬" },
+];
 
-  let out = "";
-  for (const u of units){
-    const q = Math.floor(n / u.value);
-    if (q > 0){
-      out += `${q}${u.label}`;
-      n = n % u.value;
-    }
-  }
-  if (n > 0 || out === "") out += `${n}`;
-  return out;
+let out = "";
+for (const u of units){
+const q = Math.floor(n / u.value);
+if (q > 0){
+out += `${q}${u.label}`;
+n = n % u.value;
+}
+}
+if (n > 0 || out === "") out += `${n}`;
+return out;
 }
 
 /* =========================
-   ✅ 並列排名工具（競賽排名：會跳號）
-   例：1,1,3,4...
+  ✅ 並列排名工具（競賽排名：會跳號）
+  例：1,1,3,4...
 ========================= */
 function sameNumber(a, b, eps = 1e-9){
-  return (a !== null && b !== null && Number.isFinite(a) && Math.abs(a - b) <= eps);
+return (a !== null && b !== null && Number.isFinite(a) && Math.abs(a - b) <= eps);
 }
 function buildCompetitionRankMap(sortedList, getVal){
-  const m = new Map();
-  let prevVal = null;
-  let prevRank = 0;
+const m = new Map();
+let prevVal = null;
+let prevRank = 0;
 
-  for (let i = 0; i < sortedList.length; i++){
-    const r = sortedList[i];
-    const v = getVal(r);
-    let rank;
+for (let i = 0; i < sortedList.length; i++){
+const r = sortedList[i];
+const v = getVal(r);
+let rank;
 
-    if (i === 0){
-      rank = 1;
-    } else if (sameNumber(v, prevVal)){
-      rank = prevRank;
-    } else {
-      rank = i + 1; // 競賽排名：跳號
-    }
+if (i === 0){
+rank = 1;
+} else if (sameNumber(v, prevVal)){
+rank = prevRank;
+} else {
+rank = i + 1; // 競賽排名：跳號
+}
 
-    m.set(r.rowIdx, rank);
-    prevVal = v;
-    prevRank = rank;
-  }
-  return m;
+m.set(r.rowIdx, rank);
+prevVal = v;
+prevRank = rank;
+}
+return m;
 }
 /* ========================= */
 
 /** 日期解析 */
 function parseDateLoose(s){
-  if (!s) return null;
-  const t = s.replace(" ", "T");
-  const d = new Date(t);
-  return isNaN(d.getTime()) ? null : d;
+if (!s) return null;
+const t = s.replace(" ", "T");
+const d = new Date(t);
+return isNaN(d.getTime()) ? null : d;
 }
 function parseUpdatedCell(cell){
-  const f = normalizeText(cell?.f);
-  if (f){
-    const d = parseDateLoose(f);
-    return { text: f, date: d };
-  }
-  const v = cell?.v;
-  if (v instanceof Date){
-    return { text: v.toLocaleString("zh-TW"), date: v };
-  }
-  const s = normalizeText(v);
-  if (!s) return { text: "-", date: null };
+const f = normalizeText(cell?.f);
+if (f){
+const d = parseDateLoose(f);
+return { text: f, date: d };
+}
+const v = cell?.v;
+if (v instanceof Date){
+return { text: v.toLocaleString("zh-TW"), date: v };
+}
+const s = normalizeText(v);
+if (!s) return { text: "-", date: null };
 
-  const m = s.match(/^Date\((\d+),(\d+),(\d+)(?:,(\d+),(\d+),(\d+))?\)$/);
-  if (m){
-    const yy = Number(m[1]);
-    const mm = Number(m[2]);
-    const dd = Number(m[3]);
-    const hh = Number(m[4] ?? 0);
-    const mi = Number(m[5] ?? 0);
-    const ss = Number(m[6] ?? 0);
-    const d = new Date(yy, mm, dd, hh, mi, ss);
-    return { text: d.toLocaleString("zh-TW"), date: d };
-  }
+const m = s.match(/^Date\((\d+),(\d+),(\d+)(?:,(\d+),(\d+),(\d+))?\)$/);
+if (m){
+const yy = Number(m[1]);
+const mm = Number(m[2]);
+const dd = Number(m[3]);
+const hh = Number(m[4] ?? 0);
+const mi = Number(m[5] ?? 0);
+const ss = Number(m[6] ?? 0);
+const d = new Date(yy, mm, dd, hh, mi, ss);
+return { text: d.toLocaleString("zh-TW"), date: d };
+}
 
-  const d = parseDateLoose(s);
-  return { text: s, date: d };
+const d = parseDateLoose(s);
+return { text: s, date: d };
 }
 
 function gvizUrl(){
-  const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq`;
-  const params = new URLSearchParams({ tqx: "out:json", sheet: SHEET_NAME });
-  return `${base}?${params.toString()}`;
+const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq`;
+const params = new URLSearchParams({ tqx: "out:json", sheet: SHEET_NAME });
+return `${base}?${params.toString()}`;
 }
 function parseGviz(text){
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start < 0 || end < 0) throw new Error("GViz 回傳格式不正確");
-  return JSON.parse(text.slice(start, end + 1));
+const start = text.indexOf("{");
+const end = text.lastIndexOf("}");
+if (start < 0 || end < 0) throw new Error("GViz 回傳格式不正確");
+return JSON.parse(text.slice(start, end + 1));
 }
 function detectColIndex(cols, label){
-  return cols.findIndex(c => normalizeText(c.label) === label);
+return cols.findIndex(c => normalizeText(c.label) === label);
 }
 function escapeHtml(s){
-  return (s ?? "").toString()
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
+return (s ?? "").toString()
+.replaceAll("&","&amp;")
+.replaceAll("<","&lt;")
+.replaceAll(">","&gt;")
+.replaceAll('"',"&quot;")
+.replaceAll("'","&#039;");
 }
 function tableHtml(headers, rows2d){
-  const thead = `<thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead>`;
-  const tbody = `<tbody>${rows2d.map(r=>`<tr>${r.map(cell=>`<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody>`;
-  return `<table>${thead}${tbody}</table>`;
+const thead = `<thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead>`;
+const tbody = `<tbody>${rows2d.map(r=>`<tr>${r.map(cell=>`<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody>`;
+return `<table>${thead}${tbody}</table>`;
 }
 
 /** ✅ 取得目前榜單使用的 worldKey：選全部就用 "__ALL__" */
 function worldKeyForTop(){
-  return worldSelect.value; // "__ALL__" or specific world
+return worldSelect.value; // "__ALL__" or specific world
 }
 
 /** ✅ 依目前選擇刷新職業下拉（全部伺服器 = 全伺服器職業） */
 function refreshJobOptions(keepValue=true){
-  const worldKey = worldKeyForTop();
-  const prev = jobSelect.value;
+const worldKey = worldKeyForTop();
+const prev = jobSelect.value;
 
-  const set = new Set();
-  for (const r of rows){
-    if (!r.job || r.job === "-" ) continue;
-    if (worldKey !== "__ALL__" && r.world !== worldKey) continue;
-    set.add(r.job);
-  }
-  const jobs = Array.from(set).sort((a,b)=>a.localeCompare(b, "zh-Hant"));
+const set = new Set();
+for (const r of rows){
+if (!r.job || r.job === "-" ) continue;
+if (worldKey !== "__ALL__" && r.world !== worldKey) continue;
+set.add(r.job);
+}
+const jobs = Array.from(set).sort((a,b)=>a.localeCompare(b, "zh-Hant"));
 
-  jobSelect.innerHTML = "";
-  const optAll = document.createElement("option");
-  optAll.value = "__ALL_JOB__";
-  optAll.textContent = "全部職業";
-  jobSelect.appendChild(optAll);
+jobSelect.innerHTML = "";
+const optAll = document.createElement("option");
+optAll.value = "__ALL_JOB__";
+optAll.textContent = "全部職業";
+jobSelect.appendChild(optAll);
 
-  for (const j of jobs){
-    const opt = document.createElement("option");
-    opt.value = j;
-    opt.textContent = j;
-    jobSelect.appendChild(opt);
-  }
+for (const j of jobs){
+const opt = document.createElement("option");
+opt.value = j;
+opt.textContent = j;
+jobSelect.appendChild(opt);
+}
 
-  if (keepValue && prev && prev !== "__ALL_JOB__" && jobs.includes(prev)){
-    jobSelect.value = prev;
-  } else {
-    jobSelect.value = "__ALL_JOB__";
-  }
+if (keepValue && prev && prev !== "__ALL_JOB__" && jobs.includes(prev)){
+jobSelect.value = prev;
+} else {
+jobSelect.value = "__ALL_JOB__";
+}
 }
 
 /* =========================
-   ✅ 附近榜（經驗/戰力）+ 上下 50 名
+  ✅ 附近榜（經驗/戰力）+ 上下 50 名
 ========================= */
 function setAroundTab(metric){
-  aroundState.metric = metric;
+aroundState.metric = metric;
 
-  tabAroundExp.classList.toggle("active", metric === "exp");
-  tabAroundBp.classList.toggle("active", metric === "bp");
+tabAroundExp.classList.toggle("active", metric === "exp");
+tabAroundBp.classList.toggle("active", metric === "bp");
 
-  renderAroundTable();
+renderAroundTable();
 }
 
 function hideAroundControls(){
-  aroundControls.classList.remove("show");
-  aroundMeta.textContent = "";
-  aroundHint.textContent = "（以所選榜單為基準，顯示你附近的排名，可一直往上/往下翻）";
+aroundControls.classList.remove("show");
+aroundMeta.textContent = "";
+aroundHint.textContent = "（以所選榜單為基準，顯示你附近的排名，可一直往上/往下翻）";
 
-  tabAroundExp.disabled = false;
-  tabAroundBp.disabled = false;
+tabAroundExp.disabled = false;
+tabAroundBp.disabled = false;
 
-  aroundState = {
-    enabled: false,
-    metric: "exp",
-    worldKey: "__ALL__",
-    centerRowIdx: null,
-    listStart: 0,
-    pageSize: 50
-  };
+aroundState = {
+enabled: false,
+metric: "exp",
+worldKey: "__ALL__",
+centerRowIdx: null,
+listStart: 0,
+pageSize: 50
+};
 
-  const markerId = "__around_block__";
-  const old = document.getElementById(markerId);
-  if (old) old.remove();
+const markerId = "__around_block__";
+const old = document.getElementById(markerId);
+if (old) old.remove();
 }
 
 function showAroundControls(){
-  aroundControls.classList.add("show");
+aroundControls.classList.add("show");
 }
 
 function initAroundForSingleResult(oneRow, worldKey){
-  aroundState.enabled = true;
-  aroundState.worldKey = worldKey;
-  aroundState.centerRowIdx = oneRow.rowIdx;
-  aroundState.pageSize = 50;
+aroundState.enabled = true;
+aroundState.worldKey = worldKey;
+aroundState.centerRowIdx = oneRow.rowIdx;
+aroundState.pageSize = 50;
 
-  tabAroundExp.disabled = (oneRow.exp === null);
-  tabAroundBp.disabled  = (oneRow.bp  === null);
+tabAroundExp.disabled = (oneRow.exp === null);
+tabAroundBp.disabled  = (oneRow.bp  === null);
 
-  let defaultMetric = "exp";
-  if (oneRow.exp === null && oneRow.bp !== null) defaultMetric = "bp";
-  aroundState.metric = defaultMetric;
+let defaultMetric = "exp";
+if (oneRow.exp === null && oneRow.bp !== null) defaultMetric = "bp";
+aroundState.metric = defaultMetric;
 
-  const pack = buildRanks(worldKey);
-  const list = (defaultMetric === "exp") ? pack.expSorted : pack.bpSorted;
+const pack = buildRanks(worldKey);
+const list = (defaultMetric === "exp") ? pack.expSorted : pack.bpSorted;
 
-  const centerIdx = list.findIndex(r => r.rowIdx === oneRow.rowIdx);
-  if (centerIdx < 0){
-    hideAroundControls();
-    return;
-  }
+const centerIdx = list.findIndex(r => r.rowIdx === oneRow.rowIdx);
+if (centerIdx < 0){
+hideAroundControls();
+return;
+}
 
-  const pageSize = aroundState.pageSize;
-  const halfUp = 25;
-  let start = Math.max(0, centerIdx - halfUp);
-  if (start + pageSize > list.length){
-    start = Math.max(0, list.length - pageSize);
-  }
-  aroundState.listStart = start;
+const pageSize = aroundState.pageSize;
+const halfUp = 25;
+let start = Math.max(0, centerIdx - halfUp);
+if (start + pageSize > list.length){
+start = Math.max(0, list.length - pageSize);
+}
+aroundState.listStart = start;
 
-  showAroundControls();
-  setAroundTab(defaultMetric);
+showAroundControls();
+setAroundTab(defaultMetric);
 }
 
 function renderAroundTable(){
-  if (!aroundState.enabled) return;
+if (!aroundState.enabled) return;
 
-  const worldKey = aroundState.worldKey;
-  const metric = aroundState.metric;
-  const pack = buildRanks(worldKey);
+const worldKey = aroundState.worldKey;
+const metric = aroundState.metric;
+const pack = buildRanks(worldKey);
 
-  const list = (metric === "exp") ? pack.expSorted : pack.bpSorted;
-  const rankMap = (metric === "exp") ? pack.expRank : pack.bpRank;
+const list = (metric === "exp") ? pack.expSorted : pack.bpSorted;
+const rankMap = (metric === "exp") ? pack.expRank : pack.bpRank;
 
-  const centerRank = rankMap.get(aroundState.centerRowIdx) ?? "-";
+const centerRank = rankMap.get(aroundState.centerRowIdx) ?? "-";
 
-  const worldText = (worldKey === "__ALL__") ? "全部伺服器" : worldKey;
-  const metricText = (metric === "exp") ? "經驗" : "戰力";
-  aroundMeta.textContent = `（${worldText}｜你的${metricText}排名：${centerRank === "-" ? "-" : "第" + centerRank + "名"}）`;
+const worldText = (worldKey === "__ALL__") ? "全部伺服器" : worldKey;
+const metricText = (metric === "exp") ? "經驗" : "戰力";
+aroundMeta.textContent = `（${worldText}｜你的${metricText}排名：${centerRank === "-" ? "-" : "第" + centerRank + "名"}）`;
 
-  const start = Math.max(0, Math.min(aroundState.listStart, Math.max(0, list.length - aroundState.pageSize)));
-  aroundState.listStart = start;
+const start = Math.max(0, Math.min(aroundState.listStart, Math.max(0, list.length - aroundState.pageSize)));
+aroundState.listStart = start;
 
-  const end = Math.min(list.length, start + aroundState.pageSize);
-  const slice = list.slice(start, end);
+const end = Math.min(list.length, start + aroundState.pageSize);
+const slice = list.slice(start, end);
 
-  btnUp50.disabled = (start <= 0);
-  btnDown50.disabled = (end >= list.length);
+btnUp50.disabled = (start <= 0);
+btnDown50.disabled = (end >= list.length);
 
-  let headers;
-  if (metric === "exp"){
-    headers = ["排名","name","world","職業","等級","經驗值%","更新時間"];
-  } else {
-    headers = ["排名","name","world","職業","戰鬥力","更新時間"];
-  }
+let headers;
+if (metric === "exp"){
+headers = ["排名","name","world","職業","等級","經驗值%","更新時間"];
+} else {
+headers = ["排名","name","world","職業","戰鬥力","更新時間"];
+}
 
-  const body = slice.map(r=>{
-    const rk = rankMap.get(r.rowIdx) ?? "-";
-    const isCenter = (r.rowIdx === aroundState.centerRowIdx);
-    const nameCell = isCenter ? `<span class="pill">${escapeHtml(r.name)}</span>` : escapeHtml(r.name);
+const body = slice.map(r=>{
+const rk = rankMap.get(r.rowIdx) ?? "-";
+const isCenter = (r.rowIdx === aroundState.centerRowIdx);
+const nameCell = isCenter ? `<span class="pill">${escapeHtml(r.name)}</span>` : escapeHtml(r.name);
 
-    if (metric === "exp"){
-      const s = splitLevelExpRate(r.exp);
-      return [
-        `<span class="mono">${rk === "-" ? "-" : "#" + rk}</span>`,
-        nameCell,
-        escapeHtml(r.world),
-        escapeHtml(r.job),
-        s.level,
-        s.expPct,
-        `<span class="nowrap">${escapeHtml(r.updatedText || "-")}</span>`
-      ];
-    } else {
-      const bpText = formatBattlePower(r.bp);
-      return [
-        `<span class="mono">${rk === "-" ? "-" : "#" + rk}</span>`,
-        nameCell,
-        escapeHtml(r.world),
-        escapeHtml(r.job),
-        `<span title="${escapeHtml(r.bp ?? "")}">${escapeHtml(bpText)}</span>`,
-        `<span class="nowrap">${escapeHtml(r.updatedText || "-")}</span>`
-      ];
-    }
-  });
+if (metric === "exp"){
+const s = splitLevelExpRate(r.exp);
+return [
+`<span class="mono">${rk === "-" ? "-" : "#" + rk}</span>`,
+nameCell,
+escapeHtml(r.world),
+escapeHtml(r.job),
+s.level,
+s.expPct,
+`<span class="nowrap">${escapeHtml(r.updatedText || "-")}</span>`
+];
+} else {
+const bpText = formatBattlePower(r.bp);
+return [
+`<span class="mono">${rk === "-" ? "-" : "#" + rk}</span>`,
+nameCell,
+escapeHtml(r.world),
+escapeHtml(r.job),
+`<span title="${escapeHtml(r.bp ?? "")}">${escapeHtml(bpText)}</span>`,
+`<span class="nowrap">${escapeHtml(r.updatedText || "-")}</span>`
+];
+}
+});
 
-  const aroundHtml =
-    `<div class="muted" style="margin-top:12px">你的附近排名（${metricText}榜｜每次顯示 50 名，可一直往上/往下翻）：</div>` +
-    tableHtml(headers, body);
+const aroundHtml =
+`<div class="muted" style="margin-top:12px">你的附近排名（${metricText}榜｜每次顯示 50 名，可一直往上/往下翻）：</div>` +
+tableHtml(headers, body);
 
-  const markerId = "__around_block__";
-  const old = document.getElementById(markerId);
-  if (old) old.remove();
+const markerId = "__around_block__";
+const old = document.getElementById(markerId);
+if (old) old.remove();
 
-  const wrap = document.createElement("div");
-  wrap.id = markerId;
-  wrap.innerHTML = aroundHtml;
-  contentEl.appendChild(wrap);
+const wrap = document.createElement("div");
+wrap.id = markerId;
+wrap.innerHTML = aroundHtml;
+contentEl.appendChild(wrap);
 }
 
 function shiftAround(deltaPages){
-  if (!aroundState.enabled) return;
-  const pageSize = aroundState.pageSize;
-  const pack = buildRanks(aroundState.worldKey);
-  const list = (aroundState.metric === "exp") ? pack.expSorted : pack.bpSorted;
+if (!aroundState.enabled) return;
+const pageSize = aroundState.pageSize;
+const pack = buildRanks(aroundState.worldKey);
+const list = (aroundState.metric === "exp") ? pack.expSorted : pack.bpSorted;
 
-  let nextStart = aroundState.listStart + deltaPages * pageSize;
-  nextStart = Math.max(0, Math.min(nextStart, Math.max(0, list.length - pageSize)));
-  aroundState.listStart = nextStart;
-  renderAroundTable();
+let nextStart = aroundState.listStart + deltaPages * pageSize;
+nextStart = Math.max(0, Math.min(nextStart, Math.max(0, list.length - pageSize)));
+aroundState.listStart = nextStart;
+renderAroundTable();
 }
 /* ========================= */
 
-function syncTabButtons(tab){
-  [tabResult, tabTopExp, tabTopBp].forEach(b=>b.classList.remove("active"));
-  if (tab==="result") tabResult.classList.add("active");
-  if (tab==="topExp") tabTopExp.classList.add("active");
-  if (tab==="topBp") tabTopBp.classList.add("active");
-}
-
-function showLoadError(err){
-  console.error(err);
-  finishLoadingProgress(false);
-  setTimeout(()=>hideOverlay(), 380);
-  setStatus("載入失敗：" + (err?.message || err), false);
-}
-
-/** ✅ 核心：需要資料才載入（首次查詢/切榜才會跑） */
-function ensureDataLoaded(){
-  if (dataReady) return Promise.resolve(true);
-  if (dataPromise) return dataPromise;
-
-  dataPromise = loadData()
-    .then(()=>{
-      dataReady = true;
-      return true;
-    })
-    .catch((err)=>{
-      dataPromise = null;
-      dataReady = false;
-      throw err;
-    });
-
-  return dataPromise;
-}
-
 async function loadData(){
-  showOverlay("資料載入中…", "正在抓取最新資料，請稍候。");
-  setStatus("首次載入資料中…");
+showOverlay("資料載入中…", "正在抓取最新資料，請稍候。");
+setStatus("載入資料中…");
 
-  const res = await fetch(gvizUrl(), { cache: "no-store" });
-  const txt = await res.text();
-  const json = parseGviz(txt);
+const res = await fetch(gvizUrl(), { cache: "no-store" });
+const txt = await res.text();
+const json = parseGviz(txt);
 
-  const table = json.table;
-  if (!table || !table.cols || !table.rows) throw new Error("讀不到資料表（可能未公開）");
+const table = json.table;
+if (!table || !table.cols || !table.rows) throw new Error("讀不到資料表（可能未公開）");
 
-  setProgress(progressValue, "解析欄位中…");
+setProgress(progressValue, "解析欄位中…");
 
-  const cols = table.cols;
-  const iName    = detectColIndex(cols, "name");
-  const iWorld   = detectColIndex(cols, "world_name");
-  const iJob     = detectColIndex(cols, "job");
-  const iExp     = detectColIndex(cols, "level_plus_exp_rate");
-  const iBp      = detectColIndex(cols, "battle_power");
-  const iUpdated = detectColIndex(cols, "updated");
+const cols = table.cols;
+const iName    = detectColIndex(cols, "name");
+const iWorld   = detectColIndex(cols, "world_name");
+const iJob     = detectColIndex(cols, "job");
+const iExp     = detectColIndex(cols, "level_plus_exp_rate");
+const iBp      = detectColIndex(cols, "battle_power");
+const iUpdated = detectColIndex(cols, "updated");
 
-  const missing = [];
-  if (iName < 0)    missing.push("name");
-  if (iWorld < 0)   missing.push("world_name");
-  if (iJob < 0)     missing.push("job");
-  if (iExp < 0)     missing.push("level_plus_exp_rate");
-  if (iBp < 0)      missing.push("battle_power");
-  if (iUpdated < 0) missing.push("updated");
-  if (missing.length){
-    throw new Error("找不到欄位：" + missing.join(", ") + "（請確認標題列）");
-  }
+const missing = [];
+if (iName < 0)    missing.push("name");
+if (iWorld < 0)   missing.push("world_name");
+if (iJob < 0)     missing.push("job");
+if (iExp < 0)     missing.push("level_plus_exp_rate");
+if (iBp < 0)      missing.push("battle_power");
+if (iUpdated < 0) missing.push("updated");
+if (missing.length){
+throw new Error("找不到欄位：" + missing.join(", ") + "（請確認標題列）");
+}
 
-  setProgress(progressValue, "整理資料中…");
+setProgress(progressValue, "整理資料中…");
 
-  // ✅ 先做初步轉換
-  let tmpRows = table.rows.map((r, idx) => {
-    const c = r.c || [];
-    const name  = normalizeText(c[iName]?.v);
-    const world = normalizeText(c[iWorld]?.v);
-    const job   = normalizeText(c[iJob]?.v) || "-";
-    const exp   = toNumber(c[iExp]?.v);
-    const bp    = toNumber(c[iBp]?.v);
-    const up    = parseUpdatedCell(c[iUpdated]);
-    return { rowIdx: idx, name, world, job, exp, bp, updatedText: up.text || "-", updatedDate: up.date || null };
-  }).filter(x => x.name && x.world);
+// ✅ 先做初步轉換
+let tmpRows = table.rows.map((r, idx) => {
+const c = r.c || [];
+const name  = normalizeText(c[iName]?.v);
+const world = normalizeText(c[iWorld]?.v);
+const job   = normalizeText(c[iJob]?.v) || "-";
+const exp   = toNumber(c[iExp]?.v);
+const bp    = toNumber(c[iBp]?.v);
+const up    = parseUpdatedCell(c[iUpdated]);
+return { rowIdx: idx, name, world, job, exp, bp, updatedText: up.text || "-", updatedDate: up.date || null };
+}).filter(x => x.name && x.world);
 
-  // ✅ 過濾掉戰鬥力 >= 100 億 的異常資料（整筆排除）
-  const beforeCount = tmpRows.length;
-  tmpRows = tmpRows.filter(r => !(r.bp !== null && r.bp >= BP_EXCLUDE_MIN));
-  const removedCount = beforeCount - tmpRows.length;
+// ✅ 過濾掉戰鬥力 >= 100 億 的異常資料（整筆排除）
+const beforeCount = tmpRows.length;
+tmpRows = tmpRows.filter(r => !(r.bp !== null && r.bp >= BP_EXCLUDE_MIN));
+const removedCount = beforeCount - tmpRows.length;
 
-  // ✅ 重新連號 rowIdx（避免 rank map 用舊 idx）
-  rows = tmpRows.map((r, newIdx) => ({ ...r, rowIdx: newIdx }));
+// ✅ 重新連號 rowIdx（避免 rank map 用舊 idx）
+rows = tmpRows.map((r, newIdx) => ({ ...r, rowIdx: newIdx }));
 
-  if (removedCount > 0){
-    console.warn(`已過濾異常戰鬥力資料：${removedCount} 筆（bp >= ${BP_EXCLUDE_MIN}）`);
-  }
+// ✅ 如果有移除，印 log（不影響 UI）
+if (removedCount > 0){
+console.warn(`已過濾異常戰鬥力資料：${removedCount} 筆（bp >= ${BP_EXCLUDE_MIN}）`);
+}
 
-  rankCache.clear();
-  jobRankCache.clear();
+rankCache.clear();
+jobRankCache.clear();
 
-  latestUpdated = null;
-  for (const r of rows){
-    if (r.updatedDate && (!latestUpdated || r.updatedDate > latestUpdated)){
-      latestUpdated = r.updatedDate;
-    }
-  }
+latestUpdated = null;
+for (const r of rows){
+if (r.updatedDate && (!latestUpdated || r.updatedDate > latestUpdated)){
+latestUpdated = r.updatedDate;
+}
+}
 
-  setProgress(progressValue, "建立伺服器清單…");
+setProgress(progressValue, "建立伺服器清單…");
 
-  const setW = new Set(rows.map(r => r.world));
-  worlds = Array.from(setW).sort((a,b)=>a.localeCompare(b, "zh-Hant"));
+const setW = new Set(rows.map(r => r.world));
+worlds = Array.from(setW).sort((a,b)=>a.localeCompare(b, "zh-Hant"));
 
-  worldSelect.innerHTML = "";
-  const optAll = document.createElement("option");
-  optAll.value = "__ALL__";
-  optAll.textContent = "全部伺服器";
-  worldSelect.appendChild(optAll);
-  for (const w of worlds){
-    const opt = document.createElement("option");
-    opt.value = w;
-    opt.textContent = w;
-    worldSelect.appendChild(opt);
-  }
+worldSelect.innerHTML = "";
+const optAll = document.createElement("option");
+optAll.value = "__ALL__";
+optAll.textContent = "全部伺服器";
+worldSelect.appendChild(optAll);
+for (const w of worlds){
+const opt = document.createElement("option");
+opt.value = w;
+opt.textContent = w;
+worldSelect.appendChild(opt);
+}
 
-  if (worlds.includes("挑戰者")) worldSelect.value = "挑戰者";
+if (worlds.includes("挑戰者")) worldSelect.value = "挑戰者";
 
-  refreshJobOptions(false);
+refreshJobOptions(false);
 
-  loadedAt = new Date();
-  const latestText = latestUpdated ? latestUpdated.toLocaleString("zh-TW") : "-";
-  metaInfo.textContent =
-    `資料筆數：${rows.length.toLocaleString()}　|　資料最新更新：${latestText}　|　載入時間：${loadedAt.toLocaleString()}`;
+loadedAt = new Date();
+const latestText = latestUpdated ? latestUpdated.toLocaleString("zh-TW") : "-";
+metaInfo.textContent =
+`資料筆數：${rows.length.toLocaleString()}　|　資料最新更新：${latestText}　|　載入時間：${loadedAt.toLocaleString()}`;
 
-  setStatus("載入完成。你可以開始查詢了。", true);
+setStatus("載入完成。", true);
 
-  // ✅ 有帶 query 參數就自動查
-  const sp = new URLSearchParams(location.search);
-  const qName = sp.get("name");
-  const qWorld = sp.get("world");
-  const qJob = sp.get("job");
+const sp = new URLSearchParams(location.search);
+const qName = sp.get("name");
+const qWorld = sp.get("world");
+const qJob = sp.get("job");
 
-  if (qName) nameInput.value = qName;
-  if (qWorld && (qWorld === "__ALL__" || worlds.includes(qWorld))) worldSelect.value = qWorld;
+if (qName) nameInput.value = qName;
+if (qWorld && (qWorld === "__ALL__" || worlds.includes(qWorld))) worldSelect.value = qWorld;
 
-  refreshJobOptions(false);
-  if (qJob && (qJob === "__ALL_JOB__" || Array.from(jobSelect.options).some(o=>o.value===qJob))){
-    jobSelect.value = qJob;
-  } else {
-    jobSelect.value = "__ALL_JOB__";
-  }
+refreshJobOptions(false);
+if (qJob && (qJob === "__ALL_JOB__" || Array.from(jobSelect.options).some(o=>o.value===qJob))){
+jobSelect.value = qJob;
+} else {
+jobSelect.value = "__ALL_JOB__";
+}
 
-  finishLoadingProgress(true);
-  setTimeout(()=>hideOverlay(), 260);
+finishLoadingProgress(true);
+setTimeout(()=>hideOverlay(), 260);
 
-  if (qName){
-    syncTabButtons("result");
-    runSearch();
-  }
+if (qName) runSearch();
 }
 
 /** ✅ 排名包：worldKey="__ALL__" -> 全伺服器合併排名（並列同名次） */
 function buildRanks(worldKey){
-  if (rankCache.has(worldKey)) return rankCache.get(worldKey);
+if (rankCache.has(worldKey)) return rankCache.get(worldKey);
 
-  const group = (worldKey === "__ALL__") ? rows : rows.filter(r => r.world === worldKey);
+const group = (worldKey === "__ALL__") ? rows : rows.filter(r => r.world === worldKey);
 
-  const expSorted = group
-    .filter(r => r.exp !== null)
-    .slice()
-    .sort((a,b) => (b.exp - a.exp) || (a.rowIdx - b.rowIdx));
-  const expRank = buildCompetitionRankMap(expSorted, r => r.exp);
+const expSorted = group
+.filter(r => r.exp !== null)
+.slice()
+.sort((a,b) => (b.exp - a.exp) || (a.rowIdx - b.rowIdx));
+const expRank = buildCompetitionRankMap(expSorted, r => r.exp);
 
-  const bpSorted = group
-    .filter(r => r.bp !== null)
-    .slice()
-    .sort((a,b) => (b.bp - a.bp) || (a.rowIdx - b.rowIdx));
-  const bpRank = buildCompetitionRankMap(bpSorted, r => r.bp);
+const bpSorted = group
+.filter(r => r.bp !== null)
+.slice()
+.sort((a,b) => (b.bp - a.bp) || (a.rowIdx - b.rowIdx));
+const bpRank = buildCompetitionRankMap(bpSorted, r => r.bp);
 
-  const pack = { expRank, bpRank, expSorted, bpSorted };
-  rankCache.set(worldKey, pack);
-  return pack;
+const pack = { expRank, bpRank, expSorted, bpSorted };
+rankCache.set(worldKey, pack);
+return pack;
 }
 
 /** ✅ 職業內排名：worldKey="__ALL__" -> 全伺服器同職業合併排名（並列同名次） */
 function buildJobRanks(worldKey, job){
-  const key = `${worldKey}||${job}`;
-  if (jobRankCache.has(key)) return jobRankCache.get(key);
+const key = `${worldKey}||${job}`;
+if (jobRankCache.has(key)) return jobRankCache.get(key);
 
-  const groupAll = (worldKey === "__ALL__") ? rows : rows.filter(r => r.world === worldKey);
-  const group = groupAll.filter(r => r.job === job);
+const groupAll = (worldKey === "__ALL__") ? rows : rows.filter(r => r.world === worldKey);
+const group = groupAll.filter(r => r.job === job);
 
-  const expSorted = group
-    .filter(r => r.exp !== null)
-    .slice()
-    .sort((a,b) => (b.exp - a.exp) || (a.rowIdx - b.rowIdx));
-  const expJobRank = buildCompetitionRankMap(expSorted, r => r.exp);
+const expSorted = group
+.filter(r => r.exp !== null)
+.slice()
+.sort((a,b) => (b.exp - a.exp) || (a.rowIdx - b.rowIdx));
+const expJobRank = buildCompetitionRankMap(expSorted, r => r.exp);
 
-  const bpSorted = group
-    .filter(r => r.bp !== null)
-    .slice()
-    .sort((a,b) => (b.bp - a.bp) || (a.rowIdx - b.rowIdx));
-  const bpJobRank = buildCompetitionRankMap(bpSorted, r => r.bp);
+const bpSorted = group
+.filter(r => r.bp !== null)
+.slice()
+.sort((a,b) => (b.bp - a.bp) || (a.rowIdx - b.rowIdx));
+const bpJobRank = buildCompetitionRankMap(bpSorted, r => r.bp);
 
-  const pack = { expJobRank, bpJobRank };
-  jobRankCache.set(key, pack);
-  return pack;
+const pack = { expJobRank, bpJobRank };
+jobRankCache.set(key, pack);
+return pack;
 }
 
 function runSearch(){
-  activeTab = "result";
-  hideAroundControls();
+activeTab = "result";
+hideAroundControls();
 
-  const targetName = normalizeText(nameInput.value);
-  const targetWorld = worldSelect.value;
+const targetName = normalizeText(nameInput.value);
+const targetWorld = worldSelect.value;
 
-  if (!targetName){
-    setStatus("請先輸入角色名稱。", false);
-    contentEl.innerHTML = "";
-    return;
-  }
+if (!targetName){
+setStatus("請先輸入角色名稱。", false);
+contentEl.innerHTML = "";
+return;
+}
 
-  // ✅ 只要有查詢，就記錄（不論有沒有查到）
-  addSearchHistory(targetName, targetWorld, jobSelect.value || "__ALL_JOB__");
+// ✅ 只要有查詢，就記錄（不論有沒有查到）
+addSearchHistory(targetName, targetWorld, jobSelect.value || "__ALL_JOB__");
 
-  let candidates = rows.filter(r => r.name === targetName);
-  if (targetWorld !== "__ALL__"){
-    candidates = candidates.filter(r => r.world === targetWorld);
-  }
+let candidates = rows.filter(r => r.name === targetName);
+if (targetWorld !== "__ALL__"){
+candidates = candidates.filter(r => r.world === targetWorld);
+}
 
-  if (!candidates.length){
-    const fuzzy = rows
-      .filter(r => r.name.includes(targetName) && (targetWorld==="__ALL__" || r.world===targetWorld))
-      .slice(0, 20);
+if (!candidates.length){
+const fuzzy = rows
+.filter(r => r.name.includes(targetName) && (targetWorld==="__ALL__" || r.world===targetWorld))
+.slice(0, 20);
 
-    setStatus(`找不到「${targetName}」${targetWorld==="__ALL__"?"":`（${targetWorld}）`}。`, false);
+setStatus(`找不到「${targetName}」${targetWorld==="__ALL__"?"":`（${targetWorld}）`}。`, false);
 
-    if (fuzzy.length){
-      contentEl.innerHTML =
-        `<div class="muted">可能是名稱不完全一致，以下是包含「${escapeHtml(targetName)}」的前 20 筆：</div>` +
-        tableHtml(["遊戲ID","伺服器","職業","等級","經驗值%","戰鬥力","更新時間"], fuzzy.map(r=>{
-          const s = splitLevelExpRate(r.exp);
-          const bpText = formatBattlePower(r.bp);
-          return [
-            escapeHtml(r.name),
-            escapeHtml(r.world),
-            escapeHtml(r.job),
-            s.level,
-            s.expPct,
-            `<span title="${escapeHtml(r.bp ?? "")}">${escapeHtml(bpText)}</span>`,
-            `<span class="nowrap">${escapeHtml(r.updatedText || "-")}</span>`
-          ];
-        }));
-    } else {
-      contentEl.innerHTML = "";
-    }
-    return;
-  }
+if (fuzzy.length){
+contentEl.innerHTML =
+`<div class="muted">可能是名稱不完全一致，以下是包含「${escapeHtml(targetName)}」的前 20 筆：</div>` +
+tableHtml(["遊戲ID","伺服器","職業","等級","經驗值%","戰鬥力","更新時間"], fuzzy.map(r=>{
+const s = splitLevelExpRate(r.exp);
+const bpText = formatBattlePower(r.bp);
+return [
+escapeHtml(r.name),
+escapeHtml(r.world),
+escapeHtml(r.job),
+s.level,
+s.expPct,
+`<span title="${escapeHtml(r.bp ?? "")}">${escapeHtml(bpText)}</span>`,
+`<span class="nowrap">${escapeHtml(r.updatedText || "-")}</span>`
+];
+}));
+} else {
+contentEl.innerHTML = "";
+}
+return;
+}
 
-  const rankWorldKey = (targetWorld === "__ALL__") ? "__ALL__" : null;
-  const globalPack = (rankWorldKey === "__ALL__") ? buildRanks("__ALL__") : null;
+const rankWorldKey = (targetWorld === "__ALL__") ? "__ALL__" : null;
+const globalPack = (rankWorldKey === "__ALL__") ? buildRanks("__ALL__") : null;
 
-  const out = candidates.map(r => {
-    const pack = (rankWorldKey === "__ALL__") ? globalPack : buildRanks(r.world);
+const out = candidates.map(r => {
+const pack = (rankWorldKey === "__ALL__") ? globalPack : buildRanks(r.world);
 
-    const expRank = (r.exp !== null) ? (pack.expRank.get(r.rowIdx) ?? "-") : "-";
-    const bpRank  = (r.bp  !== null) ? (pack.bpRank.get(r.rowIdx)  ?? "-") : "-";
+const expRank = (r.exp !== null) ? (pack.expRank.get(r.rowIdx) ?? "-") : "-";
+const bpRank  = (r.bp  !== null) ? (pack.bpRank.get(r.rowIdx)  ?? "-") : "-";
 
-    const jobPack = buildJobRanks((rankWorldKey === "__ALL__") ? "__ALL__" : r.world, r.job);
-    const expJobRank = (r.exp !== null) ? (jobPack.expJobRank.get(r.rowIdx) ?? "-") : "-";
-    const bpJobRank  = (r.bp  !== null) ? (jobPack.bpJobRank.get(r.rowIdx)  ?? "-") : "-";
+const jobPack = buildJobRanks((rankWorldKey === "__ALL__") ? "__ALL__" : r.world, r.job);
+const expJobRank = (r.exp !== null) ? (jobPack.expJobRank.get(r.rowIdx) ?? "-") : "-";
+const bpJobRank  = (r.bp  !== null) ? (jobPack.bpJobRank.get(r.rowIdx)  ?? "-") : "-";
 
-    return {
-      rowIdx: r.rowIdx,
-      name: r.name,
-      world: r.world,
-      job: r.job,
-      exp: r.exp,
-      expRank,
-      expJobRank,
-      bp: r.bp,
-      bpRank,
-      bpJobRank,
-      updatedText: r.updatedText || "-"
-    };
-  });
+return {
+rowIdx: r.rowIdx,
+name: r.name,
+world: r.world,
+job: r.job,
+exp: r.exp,
+expRank,
+expJobRank,
+bp: r.bp,
+bpRank,
+bpJobRank,
+updatedText: r.updatedText || "-"
+};
+});
 
-  out.sort((a,b)=> (b.exp??-1)-(a.exp??-1));
+out.sort((a,b)=> (b.exp??-1)-(a.exp??-1));
 
-  setStatus(`找到 ${out.length} 筆「${targetName}」資料。`, true);
+setStatus(`找到 ${out.length} 筆「${targetName}」資料。`, true);
 
-  contentEl.innerHTML = tableHtml(
-    ["遊戲ID","伺服器","職業","等級","經驗值%","經驗排名","職業經驗排名","戰鬥力","戰力排名","職業戰力排名","更新時間"],
-    out.map(x => {
-      const s = splitLevelExpRate(x.exp);
-      const bpText = formatBattlePower(x.bp);
-      return [
-        `<span class="pill">${escapeHtml(x.name)}</span>`,
-        escapeHtml(x.world),
-        escapeHtml(x.job),
-        s.level,
-        s.expPct,
-        (x.expRank === "-" ? "-" : `第${x.expRank}名`),
-        (x.expJobRank === "-" ? "-" : `第${x.expJobRank}名`),
-        `<span title="${escapeHtml(x.bp ?? "")}">${escapeHtml(bpText)}</span>`,
-        (x.bpRank === "-" ? "-" : `第${x.bpRank}名`),
-        (x.bpJobRank === "-" ? "-" : `第${x.bpJobRank}名`),
-        `<span class="nowrap">${escapeHtml(x.updatedText || "-")}</span>`
-      ];
-    })
-  );
+contentEl.innerHTML = tableHtml(
+["遊戲ID","伺服器","職業","等級","經驗值%","經驗排名","職業經驗排名","戰鬥力","戰力排名","職業戰力排名","更新時間"],
+out.map(x => {
+const s = splitLevelExpRate(x.exp);
+const bpText = formatBattlePower(x.bp);
+return [
+`<span class="pill">${escapeHtml(x.name)}</span>`,
+escapeHtml(x.world),
+escapeHtml(x.job),
+s.level,
+s.expPct,
+(x.expRank === "-" ? "-" : `第${x.expRank}名`),
+(x.expJobRank === "-" ? "-" : `第${x.expJobRank}名`),
+`<span title="${escapeHtml(x.bp ?? "")}">${escapeHtml(bpText)}</span>`,
+(x.bpRank === "-" ? "-" : `第${x.bpRank}名`),
+(x.bpJobRank === "-" ? "-" : `第${x.bpJobRank}名`),
+`<span class="nowrap">${escapeHtml(x.updatedText || "-")}</span>`
+];
+})
+);
 
-  if (out.length === 1){
-    const one = out[0];
-    const worldKey = (worldSelect.value === "__ALL__") ? "__ALL__" : one.world;
-    initAroundForSingleResult(one, worldKey);
-  }
+if (out.length === 1){
+const one = out[0];
+const worldKey = (worldSelect.value === "__ALL__") ? "__ALL__" : one.world;
+initAroundForSingleResult(one, worldKey);
+}
 }
 
 function renderTop(metric){
-  hideAroundControls();
-  activeTab = (metric === "exp") ? "topExp" : "topBp";
+hideAroundControls();
+activeTab = (metric === "exp") ? "topExp" : "topBp";
 
-  const worldKey = worldKeyForTop();
-  const jobFilter = jobSelect.value || "__ALL_JOB__";
+const worldKey = worldKeyForTop();
+const jobFilter = jobSelect.value || "__ALL_JOB__";
 
-  const pack = buildRanks(worldKey);
-  let list = (metric === "exp") ? pack.expSorted : pack.bpSorted;
+const pack = buildRanks(worldKey);
+let list = (metric === "exp") ? pack.expSorted : pack.bpSorted;
 
-  if (jobFilter !== "__ALL_JOB__"){
-    list = list.filter(r => r.job === jobFilter);
-  }
+if (jobFilter !== "__ALL_JOB__"){
+list = list.filter(r => r.job === jobFilter);
+}
 
-  const listRankMap = buildCompetitionRankMap(
-    list,
-    r => (metric === "exp" ? r.exp : r.bp)
-  );
+const listRankMap = buildCompetitionRankMap(
+list,
+r => (metric === "exp" ? r.exp : r.bp)
+);
 
-  let end = Math.min(100, list.length);
-  if (list.length > 100){
-    const v100 = (metric === "exp") ? list[99].exp : list[99].bp;
-    while (end < list.length){
-      const vNext = (metric === "exp") ? list[end].exp : list[end].bp;
-      if (!sameNumber(vNext, v100)) break;
-      end++;
-    }
-  }
+let end = Math.min(100, list.length);
+if (list.length > 100){
+const v100 = (metric === "exp") ? list[99].exp : list[99].bp;
+while (end < list.length){
+const vNext = (metric === "exp") ? list[end].exp : list[end].bp;
+if (!sameNumber(vNext, v100)) break;
+end++;
+}
+}
 
-  const top = list.slice(0, end).map((r) => {
-    const jobPack = buildJobRanks(worldKey, r.job);
-    const jobRank = (metric === "exp")
-      ? (jobPack.expJobRank.get(r.rowIdx) ?? "-")
-      : (jobPack.bpJobRank.get(r.rowIdx) ?? "-");
+const top = list.slice(0, end).map((r) => {
+const jobPack = buildJobRanks(worldKey, r.job);
+const jobRank = (metric === "exp")
+? (jobPack.expJobRank.get(r.rowIdx) ?? "-")
+: (jobPack.bpJobRank.get(r.rowIdx) ?? "-");
 
-    return {
-      rank: listRankMap.get(r.rowIdx) ?? "-",
-      name: r.name,
-      world: r.world,
-      job: r.job,
-      value: (metric === "exp") ? r.exp : r.bp,
-      jobRank,
-      updatedText: r.updatedText || "-"
-    };
-  });
+return {
+rank: listRankMap.get(r.rowIdx) ?? "-",
+name: r.name,
+world: r.world,
+job: r.job,
+value: (metric === "exp") ? r.exp : r.bp,
+jobRank,
+updatedText: r.updatedText || "-"
+};
+});
 
-  const worldText = (worldKey === "__ALL__") ? "全部伺服器" : worldKey;
-  const filterText = (jobFilter === "__ALL_JOB__") ? "全部職業" : jobFilter;
+const worldText = (worldKey === "__ALL__") ? "全部伺服器" : worldKey;
+const filterText = (jobFilter === "__ALL_JOB__") ? "全部職業" : jobFilter;
 
-  setStatus(`顯示 ${worldText} 前 100 名（${metric === "exp" ? "經驗" : "戰力"} / ${filterText}）。`, true);
+setStatus(`顯示 ${worldText} 前 100 名（${metric === "exp" ? "經驗" : "戰力"} / ${filterText}）。`, true);
 
-  if (metric === "exp") {
-    contentEl.innerHTML = tableHtml(
-      ["排名","name","world","職業","等級","經驗值%","職業經驗排名","更新時間"],
-      top.map(x => {
-        const s = splitLevelExpRate(Number(x.value));
-        const rk = (x.rank === "-" ? "-" : `#${x.rank}`);
-        return [
-          `<span class="mono">${escapeHtml(rk)}</span>`,
-          escapeHtml(x.name),
-          escapeHtml(x.world),
-          escapeHtml(x.job),
-          s.level,
-          s.expPct,
-          (x.jobRank === "-" ? "-" : `第${x.jobRank}名`),
-          `<span class="nowrap">${escapeHtml(x.updatedText || "-")}</span>`
-        ];
-      })
-    );
-  } else {
-    contentEl.innerHTML = tableHtml(
-      ["排名","name","world","職業","戰鬥力","職業戰力排名","更新時間"],
-      top.map(x => {
-        const bpText = formatBattlePower(x.value);
-        const rk = (x.rank === "-" ? "-" : `#${x.rank}`);
-        return [
-          `<span class="mono">${escapeHtml(rk)}</span>`,
-          escapeHtml(x.name),
-          escapeHtml(x.world),
-          escapeHtml(x.job),
-          `<span title="${escapeHtml(x.value ?? "")}">${escapeHtml(bpText)}</span>`,
-          (x.jobRank === "-" ? "-" : `第${x.jobRank}名`),
-          `<span class="nowrap">${escapeHtml(x.updatedText || "-")}</span>`
-        ];
-      })
-    );
-  }
+if (metric === "exp") {
+contentEl.innerHTML = tableHtml(
+["排名","name","world","職業","等級","經驗值%","職業經驗排名","更新時間"],
+top.map(x => {
+const s = splitLevelExpRate(Number(x.value));
+const rk = (x.rank === "-" ? "-" : `#${x.rank}`);
+return [
+`<span class="mono">${escapeHtml(rk)}</span>`,
+escapeHtml(x.name),
+escapeHtml(x.world),
+escapeHtml(x.job),
+s.level,
+s.expPct,
+(x.jobRank === "-" ? "-" : `第${x.jobRank}名`),
+`<span class="nowrap">${escapeHtml(x.updatedText || "-")}</span>`
+];
+})
+);
+} else {
+contentEl.innerHTML = tableHtml(
+["排名","name","world","職業","戰鬥力","職業戰力排名","更新時間"],
+top.map(x => {
+const bpText = formatBattlePower(x.value);
+const rk = (x.rank === "-" ? "-" : `#${x.rank}`);
+return [
+`<span class="mono">${escapeHtml(rk)}</span>`,
+escapeHtml(x.name),
+escapeHtml(x.world),
+escapeHtml(x.job),
+`<span title="${escapeHtml(x.value ?? "")}">${escapeHtml(bpText)}</span>`,
+(x.jobRank === "-" ? "-" : `第${x.jobRank}名`),
+`<span class="nowrap">${escapeHtml(x.updatedText || "-")}</span>`
+];
+})
+);
+}
 }
 
 function setActiveTab(tab){
-  activeTab = tab;
-  syncTabButtons(tab);
+activeTab = tab;
 
-  if (tab === "result"){
-    const name = normalizeText(nameInput.value);
-    if (!name){
-      setStatus("請先輸入角色名稱，再按查詢。", false);
-      contentEl.innerHTML = "";
-      return;
-    }
-    ensureDataLoaded()
-      .then(()=>runSearch())
-      .catch(showLoadError);
-    return;
-  }
+[tabResult, tabTopExp, tabTopBp].forEach(b=>b.classList.remove("active"));
+if (tab==="result") tabResult.classList.add("active");
+if (tab==="topExp") tabTopExp.classList.add("active");
+if (tab==="topBp") tabTopBp.classList.add("active");
 
-  // topExp / topBp
-  ensureDataLoaded()
-    .then(()=>{
-      if (tab==="topExp") renderTop("exp");
-      if (tab==="topBp") renderTop("bp");
-    })
-    .catch(showLoadError);
+if (tab==="result") runSearch();
+if (tab==="topExp") renderTop("exp");
+if (tab==="topBp") renderTop("bp");
 }
 
 function copyShareLink(){
-  const name = normalizeText(nameInput.value);
-  const world = worldSelect.value;
-  const job = jobSelect.value || "__ALL_JOB__";
+const name = normalizeText(nameInput.value);
+const world = worldSelect.value;
+const job = jobSelect.value || "__ALL_JOB__";
 
-  const url = new URL(location.href);
-  if (name) url.searchParams.set("name", name);
-  url.searchParams.set("world", world);
-  url.searchParams.set("job", job);
+const url = new URL(location.href);
+if (name) url.searchParams.set("name", name);
+url.searchParams.set("world", world);
+url.searchParams.set("job", job);
 
-  navigator.clipboard.writeText(url.toString()).then(()=>{
-    setStatus("已複製查詢連結。", true);
-  }).catch(()=>{
-    setStatus("複製失敗（瀏覽器不允許剪貼簿）。你可以手動複製網址列。", false);
-  });
+navigator.clipboard.writeText(url.toString()).then(()=>{
+setStatus("已複製查詢連結。", true);
+}).catch(()=>{
+setStatus("複製失敗（瀏覽器不允許剪貼簿）。你可以手動複製網址列。", false);
+});
 }
 
 /* ====== 事件 ====== */
@@ -1512,109 +1404,97 @@ nameInput.addEventListener("keydown", (e)=>{ if (e.key==="Enter") setActiveTab("
 
 /* ✅ 搜尋紀錄：雙擊 input 出現 */
 nameInput.addEventListener("dblclick", ()=>{
-  if (isHistoryShown()) hideHistoryDropdown();
-  else showHistoryDropdown();
+if (isHistoryShown()) hideHistoryDropdown();
+else showHistoryDropdown();
 });
 /* ✅ 當下拉開著時，輸入會即時篩選 */
 nameInput.addEventListener("input", ()=>{
-  if (isHistoryShown()){
-    renderHistoryDropdown(nameInput.value);
-    positionHistoryDropdown();
-  }
+if (isHistoryShown()){
+renderHistoryDropdown(nameInput.value);
+positionHistoryDropdown();
+}
 });
 /* ✅ 鍵盤操作 */
 nameInput.addEventListener("keydown", (e)=>{
-  if (e.key === "ArrowDown"){
-    if (!isHistoryShown()){
-      showHistoryDropdown();
-      e.preventDefault();
-      return;
-    }
-    moveHistoryActive(+1);
-    e.preventDefault();
-    return;
-  }
-  if (e.key === "ArrowUp"){
-    if (isHistoryShown()){
-      moveHistoryActive(-1);
-      e.preventDefault();
-    }
-    return;
-  }
-  if (e.key === "Escape"){
-    if (isHistoryShown()){
-      hideHistoryDropdown();
-      e.preventDefault();
-    }
-    return;
-  }
-  if (e.key === "Enter"){
-    if (isHistoryShown() && historyActiveIndex >= 0){
-      applyHistoryByIndex(historyActiveIndex);
-      e.preventDefault();
-      return;
-    }
-  }
+if (e.key === "ArrowDown"){
+if (!isHistoryShown()){
+showHistoryDropdown();
+e.preventDefault();
+return;
+}
+moveHistoryActive(+1);
+e.preventDefault();
+return;
+}
+if (e.key === "ArrowUp"){
+if (isHistoryShown()){
+moveHistoryActive(-1);
+e.preventDefault();
+}
+return;
+}
+if (e.key === "Escape"){
+if (isHistoryShown()){
+hideHistoryDropdown();
+e.preventDefault();
+}
+return;
+}
+if (e.key === "Enter"){
+if (isHistoryShown() && historyActiveIndex >= 0){
+applyHistoryByIndex(historyActiveIndex);
+e.preventDefault();
+return;
+}
+}
 });
 /* ✅ 點空白處關閉下拉 */
 document.addEventListener("mousedown", (e)=>{
-  if (!isHistoryShown()) return;
-  const t = e.target;
-  if (t === nameInput) return;
-  if (historyDropdownEl && historyDropdownEl.contains(t)) return;
-  hideHistoryDropdown();
+if (!isHistoryShown()) return;
+const t = e.target;
+if (t === nameInput) return;
+if (historyDropdownEl && historyDropdownEl.contains(t)) return;
+hideHistoryDropdown();
 });
 /* ✅ 捲動 / 視窗變更時重新定位 */
 window.addEventListener("resize", ()=>{
-  if (isHistoryShown()) positionHistoryDropdown();
+if (isHistoryShown()) positionHistoryDropdown();
 });
 window.addEventListener("scroll", ()=>{
-  if (isHistoryShown()) positionHistoryDropdown();
+if (isHistoryShown()) positionHistoryDropdown();
 }, true);
 
 tabAroundExp.addEventListener("click", ()=>{
-  if (!tabAroundExp.disabled) setAroundTab("exp");
+if (!tabAroundExp.disabled) setAroundTab("exp");
 });
 tabAroundBp.addEventListener("click", ()=>{
-  if (!tabAroundBp.disabled) setAroundTab("bp");
+if (!tabAroundBp.disabled) setAroundTab("bp");
 });
 
 btnUp50.addEventListener("click", ()=>shiftAround(-1));
 btnDown50.addEventListener("click", ()=>shiftAround(+1));
 
 worldSelect.addEventListener("change", ()=>{
-  if (!dataReady) return;
-  refreshJobOptions(true);
-  hideAroundControls();
+refreshJobOptions(true);
+hideAroundControls();
 
-  if (activeTab === "topExp") renderTop("exp");
-  if (activeTab === "topBp") renderTop("bp");
-  if (activeTab === "result") runSearch();
+if (activeTab === "topExp") renderTop("exp");
+if (activeTab === "topBp") renderTop("bp");
+if (activeTab === "result") runSearch();
 });
 
 jobSelect.addEventListener("change", ()=>{
-  if (!dataReady) return;
-  if (activeTab === "topExp") renderTop("exp");
-  if (activeTab === "topBp") renderTop("bp");
+if (activeTab === "topExp") renderTop("exp");
+if (activeTab === "topBp") renderTop("bp");
 });
 
-/* ====== 初始化（✅ 不自動載入資料） ====== */
-(function init(){
-  // 預設下拉：讓頁面不用載入資料也不會空白
-  worldSelect.innerHTML = `<option value="__ALL__">全部伺服器（首次查詢會載入資料）</option>`;
-  jobSelect.innerHTML = `<option value="__ALL_JOB__">全部職業（首次查詢會載入資料）</option>`;
-
-  metaInfo.textContent = `尚未載入資料（首次查詢/切榜時會自動載入）`;
-  setStatus("請輸入角色名稱後按「查詢」。首次查詢會先載入資料。", true);
-
-  // 如果網址帶 name 參數（分享連結），才自動載入並查詢
-  const sp = new URLSearchParams(location.search);
-  const qName = sp.get("name");
-  if (qName){
-    nameInput.value = qName;
-    ensureDataLoaded().catch(showLoadError);
-  }
-})();
+/* ====== 先載入 ====== */
+loadData().catch(err=>{
+console.error(err);
+finishLoadingProgress(false);
+setTimeout(()=>hideOverlay(), 380);
+setStatus("載入失敗：" + (err?.message || err), false);
+});
 </script>
 </body>
 </html>
