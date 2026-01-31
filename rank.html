@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>經驗值/戰力 排名查詢</title>
+<meta name="description" content="楓之谷角色經驗值、戰力、職業內排名查詢與前 100 名榜單（工具頁）。" />
 <style>
 body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC","Microsoft JhengHei",sans-serif;margin:24px;line-height:1.5}
 .card{max-width:1100px;margin:0 auto;border:1px solid #e5e7eb;border-radius:14px;padding:18px;box-shadow:0 2px 14px rgba(0,0,0,.05)}
@@ -243,10 +244,10 @@ color:#6b7280;
 <div class="row" style="margin-top:12px">
 <!-- ✅ 雙擊這個輸入框會出現「搜尋紀錄」 -->
 <input id="nameInput" placeholder="輸入角色名稱（例：Ezra蓮）" />
-<select id="worldSelect"></select>
+<select id="worldSelect"><option value="__ALL__">全部伺服器</option></select>
 
 <!-- 職業篩選（主要用在前100名） -->
-<select id="jobSelect" title="前100名可用：職業篩選"></select>
+<select id="jobSelect" title="前100名可用：職業篩選"><option value="__ALL_JOB__">全部職業</option></select>
 
 <button id="searchBtn">查詢</button>
 <button id="shareBtn" class="secondary">複製查詢連結</button>
@@ -260,6 +261,10 @@ color:#6b7280;
 </div>
 
 <div id="status" class="status"></div>
+
+    <noscript>
+      <div class="intro"><div class="muted">本站需要啟用 JavaScript 才能載入排名資料與查詢功能。</div></div>
+    </noscript>
 
 <!-- ✅ 查詢自己時：附近榜（經驗/戰力 Tab + 上下 50 名） -->
 <div id="aroundControls" class="around-controls">
@@ -324,6 +329,68 @@ const aroundMeta = $("aroundMeta");
 const aroundHint = $("aroundHint");
 
 let rows = [];              // {rowIdx, name, world, job, exp, bp, updatedText, updatedDate}
+let dataLoaded = false;
+let dataLoadingPromise = null;
+let pendingWorld = null;
+let pendingJob = null;
+let pendingAutoRun = false; // URL 帶 name 時：載入完成後自動查詢
+
+function applyDataLoadedUi(){
+  const ready = !!dataLoaded;
+  shareBtn.disabled = !ready;
+  tabTopExp.disabled = !ready;
+  tabTopBp.disabled = !ready;
+  worldSelect.disabled = !ready;
+  jobSelect.disabled = !ready;
+
+  tabAroundExp.disabled = !ready;
+  tabAroundBp.disabled = !ready;
+  btnUp50.disabled = !ready;
+  btnDown50.disabled = !ready;
+}
+
+async function ensureDataLoaded(){
+  if (dataLoaded) return true;
+  if (dataLoadingPromise) return dataLoadingPromise;
+
+  dataLoadingPromise = (async ()=>{
+    await loadData();
+    dataLoaded = true;
+
+    if (pendingWorld){
+      const wantWorld = pendingWorld;
+      const hasWorld = Array.from(worldSelect.options).some(o => o.value === wantWorld);
+      worldSelect.value = hasWorld ? wantWorld : "__ALL__";
+    }
+
+    refreshJobOptions(false);
+
+    if (pendingJob){
+      const wantJob = pendingJob;
+      const hasJob = Array.from(jobSelect.options).some(o => o.value === wantJob);
+      jobSelect.value = hasJob ? wantJob : "__ALL_JOB__";
+    } else {
+      jobSelect.value = "__ALL_JOB__";
+    }
+
+    pendingWorld = null;
+    pendingJob = null;
+
+    applyDataLoadedUi();
+
+    if (pendingAutoRun){
+      pendingAutoRun = false;
+      setActiveTab("result");
+    }
+    return true;
+  })().catch(err=>{
+    dataLoadingPromise = null;
+    throw err;
+  });
+
+  return dataLoadingPromise;
+}
+
 let worlds = [];
 let rankCache = new Map();      // key(world or "__ALL__") -> {expRank,bpRank,expSorted,bpSorted}
 let jobRankCache = new Map();   // `${worldKey}||${job}` -> {expJobRank,bpJobRank}
@@ -549,24 +616,17 @@ btn.scrollIntoView({ block: "nearest" });
 }
 }
 function applyHistoryByIndex(idx){
-const it = historyFiltered[idx];
-if (!it) return;
+  const it = historyFiltered[idx];
+  if (!it) return;
 
-nameInput.value = (it.name ?? "").toString();
+  nameInput.value = (it.name ?? "").toString();
 
-// world / job 盡量套用（若找不到選項就退回全部）
-const wantWorld = (it.world ?? "__ALL__").toString();
-const hasWorld = Array.from(worldSelect.options).some(o => o.value === wantWorld);
-worldSelect.value = hasWorld ? wantWorld : "__ALL__";
+  // ✅ Lazy Load：先記住想套用的 world/job，等資料載入後再套用
+  pendingWorld = (it.world ?? "__ALL__").toString();
+  pendingJob   = (it.job ?? "__ALL_JOB__").toString();
 
-refreshJobOptions(false);
-
-const wantJob = (it.job ?? "__ALL_JOB__").toString();
-const hasJob = Array.from(jobSelect.options).some(o => o.value === wantJob);
-jobSelect.value = hasJob ? wantJob : "__ALL_JOB__";
-
-hideHistoryDropdown();
-setActiveTab("result");
+  hideHistoryDropdown();
+  activateTab("result");
 }
 /* ========================= */
 
@@ -1095,26 +1155,7 @@ metaInfo.textContent =
 `資料筆數：${rows.length.toLocaleString()}　|　資料最新更新：${latestText}　|　載入時間：${loadedAt.toLocaleString()}`;
 
 setStatus("載入完成。", true);
-
-const sp = new URLSearchParams(location.search);
-const qName = sp.get("name");
-const qWorld = sp.get("world");
-const qJob = sp.get("job");
-
-if (qName) nameInput.value = qName;
-if (qWorld && (qWorld === "__ALL__" || worlds.includes(qWorld))) worldSelect.value = qWorld;
-
-refreshJobOptions(false);
-if (qJob && (qJob === "__ALL_JOB__" || Array.from(jobSelect.options).some(o=>o.value===qJob))){
-jobSelect.value = qJob;
-} else {
-jobSelect.value = "__ALL_JOB__";
-}
-
-finishLoadingProgress(true);
-setTimeout(()=>hideOverlay(), 260);
-
-if (qName) runSearch();
+  // ✅ 只負責載入與建表；是否自動查詢由 init() 決定
 }
 
 /** ✅ 排名包：worldKey="__ALL__" -> 全伺服器合併排名（並列同名次） */
@@ -1394,107 +1435,149 @@ setStatus("複製失敗（瀏覽器不允許剪貼簿）。你可以手動複製
 });
 }
 
-/* ====== 事件 ====== */
-searchBtn.addEventListener("click", ()=>setActiveTab("result"));
+/* ====== 事件（Lazy Load：首次操作才載入資料） ====== */
+
+async function activateTab(tab){
+  try{
+    await ensureDataLoaded();
+    setActiveTab(tab);
+  } catch (err){
+    console.error(err);
+    finishLoadingProgress(false);
+    setTimeout(()=>hideOverlay(), 380);
+    setStatus("載入失敗：" + (err?.message || err), false);
+  }
+}
+
+searchBtn.addEventListener("click", ()=>activateTab("result"));
 shareBtn.addEventListener("click", copyShareLink);
-tabResult.addEventListener("click", ()=>setActiveTab("result"));
-tabTopExp.addEventListener("click", ()=>setActiveTab("topExp"));
-tabTopBp.addEventListener("click", ()=>setActiveTab("topBp"));
-nameInput.addEventListener("keydown", (e)=>{ if (e.key==="Enter") setActiveTab("result"); });
+tabResult.addEventListener("click", ()=>activateTab("result"));
+tabTopExp.addEventListener("click", ()=>activateTab("topExp"));
+tabTopBp.addEventListener("click", ()=>activateTab("topBp"));
+
+nameInput.addEventListener("keydown", (e)=>{
+  if (e.key==="Enter") activateTab("result");
+});
 
 /* ✅ 搜尋紀錄：雙擊 input 出現 */
 nameInput.addEventListener("dblclick", ()=>{
-if (isHistoryShown()) hideHistoryDropdown();
-else showHistoryDropdown();
+  if (isHistoryShown()) hideHistoryDropdown();
+  else showHistoryDropdown();
 });
 /* ✅ 當下拉開著時，輸入會即時篩選 */
 nameInput.addEventListener("input", ()=>{
-if (isHistoryShown()){
-renderHistoryDropdown(nameInput.value);
-positionHistoryDropdown();
-}
+  if (isHistoryShown()){
+    renderHistoryDropdown(nameInput.value);
+    positionHistoryDropdown();
+  }
 });
-/* ✅ 鍵盤操作 */
+/* ✅ 鍵盤操作（搜尋紀錄） */
 nameInput.addEventListener("keydown", (e)=>{
-if (e.key === "ArrowDown"){
-if (!isHistoryShown()){
-showHistoryDropdown();
-e.preventDefault();
-return;
-}
-moveHistoryActive(+1);
-e.preventDefault();
-return;
-}
-if (e.key === "ArrowUp"){
-if (isHistoryShown()){
-moveHistoryActive(-1);
-e.preventDefault();
-}
-return;
-}
-if (e.key === "Escape"){
-if (isHistoryShown()){
-hideHistoryDropdown();
-e.preventDefault();
-}
-return;
-}
-if (e.key === "Enter"){
-if (isHistoryShown() && historyActiveIndex >= 0){
-applyHistoryByIndex(historyActiveIndex);
-e.preventDefault();
-return;
-}
-}
+  if (e.key === "ArrowDown"){
+    if (!isHistoryShown()){
+      showHistoryDropdown();
+      e.preventDefault();
+      return;
+    }
+    moveHistoryActive(+1);
+    e.preventDefault();
+    return;
+  }
+  if (e.key === "ArrowUp"){
+    if (isHistoryShown()){
+      moveHistoryActive(-1);
+      e.preventDefault();
+    }
+    return;
+  }
+  if (e.key === "Escape"){
+    if (isHistoryShown()){
+      hideHistoryDropdown();
+      e.preventDefault();
+    }
+    return;
+  }
+  if (e.key === "Enter"){
+    if (isHistoryShown() && historyActiveIndex >= 0){
+      const it = historyFiltered[historyActiveIndex];
+      if (it){
+        nameInput.value = (it.name ?? "").toString();
+        pendingWorld = (it.world ?? "__ALL__").toString();
+        pendingJob = (it.job ?? "__ALL_JOB__").toString();
+      }
+      hideHistoryDropdown();
+      activateTab("result");
+      e.preventDefault();
+      return;
+    }
+  }
 });
 /* ✅ 點空白處關閉下拉 */
 document.addEventListener("mousedown", (e)=>{
-if (!isHistoryShown()) return;
-const t = e.target;
-if (t === nameInput) return;
-if (historyDropdownEl && historyDropdownEl.contains(t)) return;
-hideHistoryDropdown();
+  if (!isHistoryShown()) return;
+  const t = e.target;
+  if (t === nameInput) return;
+  if (historyDropdownEl && historyDropdownEl.contains(t)) return;
+  hideHistoryDropdown();
 });
 /* ✅ 捲動 / 視窗變更時重新定位 */
 window.addEventListener("resize", ()=>{
-if (isHistoryShown()) positionHistoryDropdown();
+  if (isHistoryShown()) positionHistoryDropdown();
 });
 window.addEventListener("scroll", ()=>{
-if (isHistoryShown()) positionHistoryDropdown();
+  if (isHistoryShown()) positionHistoryDropdown();
 }, true);
 
 tabAroundExp.addEventListener("click", ()=>{
-if (!tabAroundExp.disabled) setAroundTab("exp");
+  if (!tabAroundExp.disabled) setAroundTab("exp");
 });
 tabAroundBp.addEventListener("click", ()=>{
-if (!tabAroundBp.disabled) setAroundTab("bp");
+  if (!tabAroundBp.disabled) setAroundTab("bp");
 });
 
 btnUp50.addEventListener("click", ()=>shiftAround(-1));
 btnDown50.addEventListener("click", ()=>shiftAround(+1));
 
 worldSelect.addEventListener("change", ()=>{
-refreshJobOptions(true);
-hideAroundControls();
+  if (!dataLoaded) return;
+  refreshJobOptions(true);
+  hideAroundControls();
 
-if (activeTab === "topExp") renderTop("exp");
-if (activeTab === "topBp") renderTop("bp");
-if (activeTab === "result") runSearch();
+  if (activeTab === "topExp") renderTop("exp");
+  if (activeTab === "topBp") renderTop("bp");
+  if (activeTab === "result") runSearch();
 });
 
 jobSelect.addEventListener("change", ()=>{
-if (activeTab === "topExp") renderTop("exp");
-if (activeTab === "topBp") renderTop("bp");
+  if (!dataLoaded) return;
+  if (activeTab === "topExp") renderTop("exp");
+  if (activeTab === "topBp") renderTop("bp");
 });
 
-/* ====== 先載入 ====== */
-loadData().catch(err=>{
-console.error(err);
-finishLoadingProgress(false);
-setTimeout(()=>hideOverlay(), 380);
-setStatus("載入失敗：" + (err?.message || err), false);
-});
+/* ====== 初始化 ====== */
+(function init(){
+  applyDataLoadedUi();
+  setStatus("請輸入角色名稱後按「查詢」。首次使用會先下載資料。", true);
+
+  const sp = new URLSearchParams(location.search);
+  const qName  = sp.get("name");
+  const qWorld = sp.get("world");
+  const qJob   = sp.get("job");
+
+  if (qName) nameInput.value = qName;
+  if (qWorld) pendingWorld = qWorld;
+  if (qJob) pendingJob = qJob;
+
+  if (qName || qWorld || qJob){
+    pendingAutoRun = !!qName;
+    ensureDataLoaded().catch(err=>{
+      console.error(err);
+      finishLoadingProgress(false);
+      setTimeout(()=>hideOverlay(), 380);
+      setStatus("載入失敗：" + (err?.message || err), false);
+    });
+  }
+})();
 </script>
 </body>
 </html>
