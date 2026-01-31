@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>經驗值/戰力 排名查詢</title>
+  <meta name="description" content="楓之谷角色經驗值%、戰鬥力、職業內排名查詢工具。支援伺服器篩選、前 100 名榜單與附近排名。提供欄位解讀、使用方式與常見問題。">
+
   <style>
     body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC","Microsoft JhengHei",sans-serif;margin:24px;line-height:1.5}
     .card{max-width:1100px;margin:0 auto;border:1px solid #e5e7eb;border-radius:14px;padding:18px;box-shadow:0 2px 14px rgba(0,0,0,.05)}
@@ -31,17 +33,24 @@
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
     .nowrap{white-space:nowrap}
 
-    /* ✅ 靜態說明區（讓工具頁不是只有 Loading） */
+    /* ✅ 靜態說明區（讓工具頁不是只有 JS / Loading） */
     .intro{
-      margin-top:10px;
-      padding:10px 12px;
+      margin-top:12px;
+      padding:14px 14px;
       border:1px solid #e5e7eb;
       border-radius:12px;
       background:#fafafa;
+      line-height:1.85;
     }
+    .intro h2{margin:0 0 6px;font-size:16px}
+    .intro h3{margin:14px 0 6px;font-size:14px}
+    .intro p{margin:6px 0}
+    .intro ul{margin:6px 0 6px 18px}
+    .intro li{margin:4px 0}
     .intro a{color:#111827}
+    .intro .note{font-size:12px;color:#6b7280;margin-top:10px}
 
-    /* ===== 全畫面 Loading Overlay ===== */
+    /* ===== 全畫面 Loading Overlay（只在真正載入資料時顯示）===== */
     .overlay{
       position:fixed;inset:0;z-index:9999;
       background:rgba(255,255,255,.78);
@@ -206,11 +215,11 @@
       color:#6b7280;
     }
   </style>
-  <!-- ✅ 注意：rank.html 故意不放 AdSense script，避免 Loading 畫面投放又被判定「沒有發布內容」 -->
+  <!-- ✅ 注意：rank.html 故意不放 AdSense script；本站審核用的內容與說明在本頁已完整呈現 -->
 </head>
 <body>
 
-  <!-- 全畫面 Loading + 進度條 -->
+  <!-- 全畫面 Loading + 進度條（✅ 只在首次查詢/切榜需要載入資料時出現） -->
   <div id="overlay" class="overlay" aria-live="polite" aria-busy="true">
     <div class="overlay-card">
       <div class="spinner" aria-hidden="true"></div>
@@ -231,6 +240,57 @@
 
   <div class="card">
     <h1>挑戰者伺服器（或其他伺服器）經驗值 / 戰力 / 職業內排名 查詢</h1>
+
+    <!-- ✅ 靜態內容：即使 JS 關掉也能閱讀（AdSense 最在意這塊） -->
+    <section class="intro" id="about" aria-label="工具說明與常見問題">
+      <h2>這個工具在做什麼？</h2>
+      <p>
+        這是一個非官方的排名查詢工具，目標是把「角色等級 / 經驗值% / 戰鬥力 / 職業內排名」整理成更容易理解的格式。
+        你可以用它快速定位：自己的進度大概落在伺服器的哪個區間、同職業大概排在哪、以及和附近玩家差距有多大。
+      </p>
+
+      <h3>資料來源與更新</h3>
+      <p>
+        本站會定期抓取資料並建立索引，因為來源端更新節奏、快取或同步流程，可能出現延遲、缺漏或短時間查不到的情況。
+        若你剛改名、剛換裝或剛提升戰鬥力，通常過一段時間再查會比較準。
+      </p>
+
+      <h3>欄位怎麼看？</h3>
+      <ul>
+        <li><strong>等級 / 經驗值%</strong>：以「等級 + 經驗值%」拆開顯示，方便比較同等級進度差距。</li>
+        <li><strong>戰鬥力</strong>：以「兆/億/萬」格式顯示，方便快速掃描排行榜。</li>
+        <li><strong>經驗排名 / 戰力排名</strong>：同數值會採用並列名次（競賽排名），所以可能出現 1,1,3 這種跳號。</li>
+        <li><strong>職業內排名</strong>：只跟同職業比較，更適合看「同職業」的相對進度。</li>
+      </ul>
+
+      <h3>使用方式（建議）</h3>
+      <ul>
+        <li>先輸入角色名稱 → 選伺服器（或全部）→ 按「查詢」。</li>
+        <li>如果只查到一筆資料，會自動顯示「附近排名」，可往上/往下翻每次 50 名。</li>
+        <li>想看整體趨勢：切到「前 100 名（經驗/戰力）」並搭配職業篩選。</li>
+      </ul>
+
+      <h3>常見問題</h3>
+      <p><strong>Q：為什麼查不到我？</strong><br>
+        可能是名稱不完全一致、資料尚未同步、或來源端暫時延遲。你可以改用「包含關鍵字」的模糊列表（系統會顯示前 20 筆相近名稱）再確認。
+      </p>
+      <p><strong>Q：為什麼戰鬥力看起來怪怪的？</strong><br>
+        若資料出現明顯異常（例如大到不合理），本頁會自動過濾極端異常值以避免榜單被污染，但仍建議以遊戲內實際資訊為準。
+      </p>
+
+      <h3>聯絡方式 / 免責聲明</h3>
+      <p>
+        本站為非官方資訊整理工具，僅供查詢與個人參考；資料可能因更新/延遲/缺漏而與實際狀況不同。若你發現資料明顯錯誤或希望回報問題，請來信：
+        <a href="mailto:s85157225@email.com">s85157225@email.com</a>
+        
+      </p>
+
+      <noscript>
+        <p><strong>提示：</strong>你的瀏覽器目前停用 JavaScript。查詢功能需要 JavaScript 才能運作，但你仍可閱讀本頁的工具說明、欄位解讀與常見問題。</p>
+      </noscript>
+
+      <p class="note">註：為了讓頁面在審核/無 JS 環境也能被判讀為「有內容」，本段說明會常駐顯示。</p>
+    </section>
 
     <div class="row" style="margin-top:12px">
       <!-- ✅ 雙擊這個輸入框會出現「搜尋紀錄」 -->
@@ -314,6 +374,10 @@ const btnUp50 = $("btnUp50");
 const btnDown50 = $("btnDown50");
 const aroundMeta = $("aroundMeta");
 const aroundHint = $("aroundHint");
+
+/** ✅ 資料載入狀態（重點：不在頁面一進來就載入） */
+let dataReady = false;
+let dataPromise = null;
 
 let rows = [];              // {rowIdx, name, world, job, exp, bp, updatedText, updatedDate}
 let worlds = [];
@@ -551,11 +615,14 @@ function applyHistoryByIndex(idx){
   const hasWorld = Array.from(worldSelect.options).some(o => o.value === wantWorld);
   worldSelect.value = hasWorld ? wantWorld : "__ALL__";
 
-  refreshJobOptions(false);
-
-  const wantJob = (it.job ?? "__ALL_JOB__").toString();
-  const hasJob = Array.from(jobSelect.options).some(o => o.value === wantJob);
-  jobSelect.value = hasJob ? wantJob : "__ALL_JOB__";
+  if (dataReady){
+    refreshJobOptions(false);
+    const wantJob = (it.job ?? "__ALL_JOB__").toString();
+    const hasJob = Array.from(jobSelect.options).some(o => o.value === wantJob);
+    jobSelect.value = hasJob ? wantJob : "__ALL_JOB__";
+  } else {
+    jobSelect.value = "__ALL_JOB__";
+  }
 
   hideHistoryDropdown();
   setActiveTab("result");
@@ -991,9 +1058,42 @@ function shiftAround(deltaPages){
 }
 /* ========================= */
 
+function syncTabButtons(tab){
+  [tabResult, tabTopExp, tabTopBp].forEach(b=>b.classList.remove("active"));
+  if (tab==="result") tabResult.classList.add("active");
+  if (tab==="topExp") tabTopExp.classList.add("active");
+  if (tab==="topBp") tabTopBp.classList.add("active");
+}
+
+function showLoadError(err){
+  console.error(err);
+  finishLoadingProgress(false);
+  setTimeout(()=>hideOverlay(), 380);
+  setStatus("載入失敗：" + (err?.message || err), false);
+}
+
+/** ✅ 核心：需要資料才載入（首次查詢/切榜才會跑） */
+function ensureDataLoaded(){
+  if (dataReady) return Promise.resolve(true);
+  if (dataPromise) return dataPromise;
+
+  dataPromise = loadData()
+    .then(()=>{
+      dataReady = true;
+      return true;
+    })
+    .catch((err)=>{
+      dataPromise = null;
+      dataReady = false;
+      throw err;
+    });
+
+  return dataPromise;
+}
+
 async function loadData(){
   showOverlay("資料載入中…", "正在抓取最新資料，請稍候。");
-  setStatus("載入資料中…");
+  setStatus("首次載入資料中…");
 
   const res = await fetch(gvizUrl(), { cache: "no-store" });
   const txt = await res.text();
@@ -1045,7 +1145,6 @@ async function loadData(){
   // ✅ 重新連號 rowIdx（避免 rank map 用舊 idx）
   rows = tmpRows.map((r, newIdx) => ({ ...r, rowIdx: newIdx }));
 
-  // ✅ 如果有移除，印 log（不影響 UI）
   if (removedCount > 0){
     console.warn(`已過濾異常戰鬥力資料：${removedCount} 筆（bp >= ${BP_EXCLUDE_MIN}）`);
   }
@@ -1086,8 +1185,9 @@ async function loadData(){
   metaInfo.textContent =
     `資料筆數：${rows.length.toLocaleString()}　|　資料最新更新：${latestText}　|　載入時間：${loadedAt.toLocaleString()}`;
 
-  setStatus("載入完成。", true);
+  setStatus("載入完成。你可以開始查詢了。", true);
 
+  // ✅ 有帶 query 參數就自動查
   const sp = new URLSearchParams(location.search);
   const qName = sp.get("name");
   const qWorld = sp.get("world");
@@ -1106,7 +1206,10 @@ async function loadData(){
   finishLoadingProgress(true);
   setTimeout(()=>hideOverlay(), 260);
 
-  if (qName) runSearch();
+  if (qName){
+    syncTabButtons("result");
+    runSearch();
+  }
 }
 
 /** ✅ 排名包：worldKey="__ALL__" -> 全伺服器合併排名（並列同名次） */
@@ -1358,15 +1461,28 @@ function renderTop(metric){
 
 function setActiveTab(tab){
   activeTab = tab;
+  syncTabButtons(tab);
 
-  [tabResult, tabTopExp, tabTopBp].forEach(b=>b.classList.remove("active"));
-  if (tab==="result") tabResult.classList.add("active");
-  if (tab==="topExp") tabTopExp.classList.add("active");
-  if (tab==="topBp") tabTopBp.classList.add("active");
+  if (tab === "result"){
+    const name = normalizeText(nameInput.value);
+    if (!name){
+      setStatus("請先輸入角色名稱，再按查詢。", false);
+      contentEl.innerHTML = "";
+      return;
+    }
+    ensureDataLoaded()
+      .then(()=>runSearch())
+      .catch(showLoadError);
+    return;
+  }
 
-  if (tab==="result") runSearch();
-  if (tab==="topExp") renderTop("exp");
-  if (tab==="topBp") renderTop("bp");
+  // topExp / topBp
+  ensureDataLoaded()
+    .then(()=>{
+      if (tab==="topExp") renderTop("exp");
+      if (tab==="topBp") renderTop("bp");
+    })
+    .catch(showLoadError);
 }
 
 function copyShareLink(){
@@ -1467,6 +1583,7 @@ btnUp50.addEventListener("click", ()=>shiftAround(-1));
 btnDown50.addEventListener("click", ()=>shiftAround(+1));
 
 worldSelect.addEventListener("change", ()=>{
+  if (!dataReady) return;
   refreshJobOptions(true);
   hideAroundControls();
 
@@ -1476,17 +1593,28 @@ worldSelect.addEventListener("change", ()=>{
 });
 
 jobSelect.addEventListener("change", ()=>{
+  if (!dataReady) return;
   if (activeTab === "topExp") renderTop("exp");
   if (activeTab === "topBp") renderTop("bp");
 });
 
-/* ====== 先載入 ====== */
-loadData().catch(err=>{
-  console.error(err);
-  finishLoadingProgress(false);
-  setTimeout(()=>hideOverlay(), 380);
-  setStatus("載入失敗：" + (err?.message || err), false);
-});
+/* ====== 初始化（✅ 不自動載入資料） ====== */
+(function init(){
+  // 預設下拉：讓頁面不用載入資料也不會空白
+  worldSelect.innerHTML = `<option value="__ALL__">全部伺服器（首次查詢會載入資料）</option>`;
+  jobSelect.innerHTML = `<option value="__ALL_JOB__">全部職業（首次查詢會載入資料）</option>`;
+
+  metaInfo.textContent = `尚未載入資料（首次查詢/切榜時會自動載入）`;
+  setStatus("請輸入角色名稱後按「查詢」。首次查詢會先載入資料。", true);
+
+  // 如果網址帶 name 參數（分享連結），才自動載入並查詢
+  const sp = new URLSearchParams(location.search);
+  const qName = sp.get("name");
+  if (qName){
+    nameInput.value = qName;
+    ensureDataLoaded().catch(showLoadError);
+  }
+})();
 </script>
 </body>
 </html>
