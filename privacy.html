@@ -52,36 +52,23 @@
       搜尋紀錄若有啟用，通常僅儲存在你的瀏覽器（LocalStorage）。你可以在瀏覽器清除網站資料以刪除。
     </p>
 
-    <h2>5. 你的選擇與控制</h2>
-    <ul>
-      <li><b>清除搜尋紀錄</b>：本站的搜尋紀錄儲存在你的瀏覽器 LocalStorage，你可以在工具頁清除或在瀏覽器「清除網站資料」。</li>
-      <li><b>管理 Cookie</b>：你可在瀏覽器設定中停用或刪除 Cookie；不同瀏覽器路徑略有差異。</li>
-    </ul>
-
-    <h2>6. 第三方連結</h2>
-    <p class="small">本站使用第三方 Google Apps Script Web App（script.google.com）提供瀏覽次數計數；該服務可能會記錄基本請求資訊（例如 IP、User-Agent）以提供計數功能。</p>
-    <p class="small">本站使用第三方 CountAPI（api.countapi.xyz）計數服務顯示瀏覽次數；該服務可能會記錄基本請求資訊（例如 IP、User-Agent）以提供計數功能。</p>
-    <p>
-      本站可能包含導向第三方網站的連結（例如資料提交或參考工具）。點擊後將適用該第三方網站的政策與條款。<br><span class="small">本站使用第三方「api.countapi.xyz」計數服務顯示瀏覽次數；該服務可能會記錄基本請求資訊（例如 IP、User-Agent）以提供計數功能。</span>
-    </p>
-
-    <h2>7. 聯絡方式</h2>
+    <h2>5. 聯絡方式</h2>
     <p class="muted">
-      若你對本政策有疑問或希望反映問題，可至 GitHub Issues 回報： <a href="https://github.com/30325129-lang/30325129-lang.github.io/issues" target="_blank" rel="noopener noreferrer">github.com/30325129-lang/30325129-lang.github.io/issues</a>。
+      若你對本政策有疑問或希望反映問題，請使用本站首頁提供的聯絡方式或以你常用的方式與站點管理者聯繫。
     </p>
 
     <div class="hr"></div>
     <p class="muted">
       <a href="./index.html">回首頁</a>　|　<a href="./rank.html">回查詢工具</a>
     </p>
+  </div>
 
-    <div class="muted" style="margin-top:10px">
-</div>
+  <script>
+    document.getElementById("d").textContent = new Date().toLocaleDateString("zh-TW");
+  </script>
 
-  <div class="muted" style="margin-top:10px">
-  瀏覽人數統計：<span data-visit-count>載入中…</span>
-  <span class="small">（若你使用擋廣告/追蹤阻擋，可能看不到數字）</span>
-</div>
-  <script src="./counter.js" defer></script>
+<div class="muted" style="margin-top:10px">瀏覽人數統計：<span data-visit-count>（載入中…）</span></div>
+
+<script src="./counter.js"></script>
 </body>
 </html>

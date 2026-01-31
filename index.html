@@ -76,27 +76,6 @@
  搜尋角色暱稱，數分鐘後將自動收錄。
     </p>
 
-    
-    <h2>資料來源與更新</h2>
-    <ul>
-      <li><b>資料展示方式</b>：本站會從資料表同步角色資訊，並在工具頁以「經驗 / 戰力」做排序與排名計算。</li>
-      <li><b>更新時效</b>：資料通常會定期同步，但可能因來源更新、網路或快取而有延遲。</li>
-      <li><b>收錄條件</b>：本站會以既定門檻篩選（例如：挑戰者服 260+、一般服 270+）。若符合條件但尚未顯示，請依下方「常見問題」的指引提交，稍後再回來查詢。</li>
-    </ul>
-
-    <h2>怎麼看「等級 / 經驗值%」？</h2>
-    <p class="muted">
-      工具頁的「等級」會顯示整數等級；「經驗值%」會顯示該等級的進度（例如 67.096%）。
-      若來源資料有前導 0（例如 067.096），本站會自動轉成 67.096 方便閱讀。
-    </p>
-
-    <h2>問題回報 / 建議</h2>
-    <p class="muted">
-      若你發現資料異常、欄位顯示錯誤或有功能建議，歡迎到 GitHub Issues 回報：
-      <a href="https://github.com/30325129-lang/30325129-lang.github.io/issues" target="_blank" rel="noopener noreferrer">github.com/30325129-lang/30325129-lang.github.io/issues</a>
-    </p>
-
-
     <h2>免責聲明</h2>
     <p class="muted">
       本站為非官方工具，僅供資訊查詢與個人參考使用；資料可能因更新/延遲/缺漏而與實際狀況不同。
@@ -104,13 +83,6 @@
     </p>
 
     <div class="hr"></div>
-
-
-    <h2>關於廣告</h2>
-    <p class="muted">
-      本站可能使用 Google AdSense 顯示廣告以支援維運。為避免工具頁載入資料時被誤判為「空白內容」，廣告腳本僅放在首頁這類「內容頁」。
-    </p>
-
 
     <!-- ✅ 手動廣告位（可選）
          你如果要「最穩」：請在 AdSense 建立一個「顯示廣告」廣告單元，拿到 data-ad-slot 後填上。
@@ -123,10 +95,23 @@
          data-ad-slot="請填你的slot"
          data-ad-format="auto"
          data-full-width-responsive="true"></ins>
-    <div class="muted" style="margin-top:10px">
-  瀏覽人數統計：<span data-visit-count>載入中…</span>
-  <span class="small">（若你使用擋廣告/追蹤阻擋，可能看不到數字）</span>
-</div>
-  <script src="./counter.js" defer></script>
+    <script>
+      (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
+    -->
+
+    <footer class="muted">
+      <div>© <span id="y"></span> 角色排名查詢工具</div>
+      <div>頁面：<a href="./rank.html">查詢工具</a>　|　<a href="./privacy.html">隱私權政策</a></div>
+    </footer>
+  </div>
+
+  <script>
+    document.getElementById("y").textContent = new Date().getFullYear();
+  </script>
+
+<div class="muted" style="margin-top:10px">瀏覽人數統計：<span data-visit-count>（載入中…）</span></div>
+
+<script src="./counter.js"></script>
 </body>
 </html>
