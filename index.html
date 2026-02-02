@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>經驗值 / 戰力 / 職業排名查詢｜楓之谷（挑戰者等伺服器）</title>
-  <meta name="description" content="提供楓之谷（含挑戰者等伺服器）角色經驗值、戰力、職業內排名查詢與前 100 名榜單，支援分享連結與搜尋紀錄。" />
+  <title>經驗值 / 戰力 / 職業排名查詢｜新楓之谷（挑戰者等伺服器）</title>
+  <meta name="description" content="提供新楓之谷（含挑戰者等伺服器）角色經驗值、戰力、職業內排名查詢與前 100 名榜單，支援分享連結與搜尋紀錄。" />
   <style>
     body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC","Microsoft JhengHei",sans-serif;margin:24px;line-height:1.7;color:#111827}
     a{color:#111827}
@@ -23,6 +23,20 @@
     .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#f3f4f6;font-size:12px}
     footer{margin-top:18px}
     code{background:#f3f4f6;padding:2px 6px;border-radius:8px}
+  
+    /* ✅ APP 下載區塊（首頁廣告） */
+    .appAd{border:1px solid #e5e7eb;border-radius:16px;padding:16px;margin:14px 0;background:#fafafa}
+    .appAdHeader{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+    .appGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+    @media(max-width:720px){.appGrid{grid-template-columns:1fr}}
+    .storeCard{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:12px;display:flex;gap:12px;align-items:center}
+    .storeCard img{width:118px;height:118px;border-radius:14px;border:1px solid #e5e7eb;background:#fff}
+    .storeMeta{flex:1;min-width:220px}
+    .storeTitle{margin:0;font-weight:700}
+    .storeLinks{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+    .small{color:#6b7280;font-size:12px;margin-top:8px}
+    code{word-break:break-all}
+
   </style>
 
   <!-- ✅ AdSense（建議：先在 AdSense 後台把「自動廣告 Auto ads」關掉，改用手動廣告位）
@@ -35,11 +49,51 @@
 
 <body>
   <div class="card">
-    <h1>楓之谷｜經驗值 / 戰力 / 職業內排名 查詢</h1>
+    <h1>新楓之谷｜經驗值 / 戰力 / 職業內排名 查詢</h1>
     <p class="muted">
       這是一個小工具網站，提供角色查詢、前 100 名榜單、職業篩選、分享連結與搜尋紀錄。
       若你是第一次使用，建議先閱讀下方「使用方式」與「常見問題」。
     </p>
+
+    <!-- ✅ APP 下載連結廣告（放在首頁最上方） -->
+    <div class="appAd" id="download-app">
+      <div class="appAdHeader">
+        <div>
+          <span class="pill">APP 下載</span>
+          <p style="margin:8px 0 0"><b>配配任務</b>｜一起來玩 / 配對聊天</p>
+          <p class="muted" style="margin-top:6px">掃描 QR Code 或點連結下載（iOS / Android）。</p>
+        </div>
+        <div class="row" style="margin-top:0">
+          <a class="btn primary" href="https://apps.apple.com/tw/app/%E9%85%8D%E9%85%8D%E4%BB%BB%E5%8B%99/id6755572328" target="_blank" rel="noopener noreferrer">App Store</a>
+          <a class="btn secondary" href="https://play.google.com/store/apps/details?id=com.ezraop.peipei&pli=1" target="_blank" rel="noopener noreferrer">Google Play</a>
+        </div>
+      </div>
+
+      <div class="appGrid">
+        <div class="storeCard">
+          <img src="./peipei_appstore_qr.png" alt="配配任務 App Store QR Code" loading="lazy" />
+          <div class="storeMeta">
+            <p class="storeTitle">iPhone / iPad（App Store）</p>
+            <div class="storeLinks">
+              <a class="btn primary" href="https://apps.apple.com/tw/app/%E9%85%8D%E9%85%8D%E4%BB%BB%E5%8B%99/id6755572328" target="_blank" rel="noopener noreferrer">立即下載</a>
+            </div>
+            <div class="small">連結：<code>https://apps.apple.com/tw/app/%E9%85%8D%E9%85%8D%E4%BB%BB%E5%8B%99/id6755572328</code></div>
+          </div>
+        </div>
+
+        <div class="storeCard">
+          <img src="./peipei_play_qr.png" alt="配配任務 Google Play QR Code" loading="lazy" />
+          <div class="storeMeta">
+            <p class="storeTitle">Android（Google Play）</p>
+            <div class="storeLinks">
+              <a class="btn primary" href="https://play.google.com/store/apps/details?id=com.ezraop.peipei&pli=1" target="_blank" rel="noopener noreferrer">立即下載</a>
+            </div>
+            <div class="small">連結：<code>https://play.google.com/store/apps/details?id=com.ezraop.peipei&pli=1</code></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
 
     <div class="row">
       <a class="btn primary" href="./rank.html">前往查詢工具</a>
@@ -67,13 +121,13 @@
     </ul>
 
     <h2>常見問題</h2>
-    <p><b>Q：查不到角色怎麼辦？</b></p>
+    <p><b>Q：查不到角色怎麼辦？＆轉移過伺服器也一樣要重新搜尋登錄！</b></p>
     <p class="muted">
       本資料庫收錄 挑戰者服 260 以上、一般服 270 以上角色。
 若符合條件但未顯示，請至 <a href="https://opencheapgpt.pse.is/opencheapgpt" target="_blank" rel="noopener noreferrer">
   https://opencheapgpt.pse.is/opencheapgpt
 </a>
- 搜尋角色暱稱，數分鐘後將自動收錄。
+ 搜尋角色暱稱，數分鐘後將自動收錄，或隔天再查詢看看。
     </p>
 
     <h2>免責聲明</h2>
