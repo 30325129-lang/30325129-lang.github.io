@@ -18,6 +18,19 @@ button.secondary{background:#fff;color:#111827}
 button:disabled{opacity:.6;cursor:not-allowed}
 .muted{color:#6b7280;font-size:13px;margin-top:6px}
 .status{margin-top:10px;font-size:13px}
+
+.faq-inline{
+  margin-top:10px;
+  padding:12px 14px;
+  border:1px dashed #e5e7eb;
+  border-radius:12px;
+  background:#fafafa;
+  font-size:14px;
+  line-height:1.6;
+}
+.faq-inline .faq-title{font-weight:700;margin-bottom:6px}
+.faq-inline .faq-q{font-weight:700}
+.faq-inline .faq-p{margin-top:6px}
 .ok{color:#065f46}
 .bad{color:#991b1b}
 table{width:100%;border-collapse:collapse;margin-top:12px}
@@ -327,6 +340,7 @@ button.modal-close{margin-left:auto;background:#fff;color:#111827;border-color:#
 </div>
 
 <div id="status" class="status"></div>
+<div id="faqInline" class="faq-inline" style="display:none"></div>
 
     <noscript>
       <div class="intro"><div class="muted">本站需要啟用 JavaScript 才能載入排名資料與查詢功能。</div></div>
@@ -388,6 +402,7 @@ const tabResult = $("tabResult");
 const tabTopExp = $("tabTopExp");
 const tabTopBp = $("tabTopBp");
 const metaInfo = $("metaInfo");
+const faqInlineEl = $("faqInline");
 
 /* ✅ 附近榜 UI */
 const aroundControls = $("aroundControls");
@@ -784,6 +799,25 @@ setUiDisabled(false);
 function setStatus(msg, ok=true){
 statusEl.textContent = msg;
 statusEl.className = "status " + (ok ? "ok" : "bad");
+}
+
+function hideFaqInline(){
+  if (!faqInlineEl) return;
+  faqInlineEl.style.display = "none";
+  faqInlineEl.innerHTML = "";
+}
+
+function showFaqInline(){
+  if (!faqInlineEl) return;
+  faqInlineEl.innerHTML = `
+    <div class="faq-title">常見問題</div>
+    <div class="faq-q">Q：查不到角色怎麼辦？＆ 轉移過伺服器也一樣要重新搜尋登錄！</div>
+    <div class="faq-p">本資料庫收錄 <b>挑戰者服 260 以上</b>、<b>一般服 270 以上</b> 角色。</div>
+    <div class="faq-p">若符合條件但未顯示，請至
+      <a href="https://opencheapgpt.pse.is/opencheapgpt" target="_blank" rel="noopener">https://opencheapgpt.pse.is/opencheapgpt</a>
+      搜尋角色暱稱，數分鐘後將自動收錄，或隔天再查詢看看。</div>
+  `;
+  faqInlineEl.style.display = "block";
 }
 
 function ensureFaqModalDom(){
@@ -1377,10 +1411,13 @@ if (worldSelect.value !== "__ALL__"){
   refreshJobOptions(true);
 }
 const selectedWorld = "__ALL__";
+  // ✅ 每次查詢先把「查不到角色」提示區清空
+  hideFaqInline();
 
   if (!targetName){
     setStatus("請先輸入角色名稱。", false);
     contentEl.innerHTML = "";
+    hideFaqInline();
     return;
   }
 
@@ -1428,7 +1465,7 @@ const selectedWorld = "__ALL__";
       .slice(0, 20);
 
     setStatus(`找不到「${targetName}」${selectedWorld==="__ALL__"?"":`（${selectedWorld}）`}。`, false);
-    showFaqModal();
+    showFaqInline();
 
     if (fuzzy.length){
       contentEl.innerHTML =
@@ -1484,8 +1521,10 @@ const selectedWorld = "__ALL__";
 
   // ✅ 狀態訊息
   if (autoAllWorld){
+    hideFaqInline();
     setStatus(`在「${selectedWorld}」找不到「${targetName}」，但其他伺服器有同名角色，已改用「全部伺服器」結果。`, true);
   } else {
+    hideFaqInline();
     setStatus(`找到 ${out.length} 筆「${targetName}」資料。`, true);
   }
 
@@ -1696,6 +1735,7 @@ async function activateTab(tab){
     console.error(err);
     finishLoadingProgress(false);
     setTimeout(()=>hideOverlay(), 380);
+    hideFaqInline();
     setStatus("載入失敗：" + (err?.message || err), false);
   }
 }
@@ -1878,7 +1918,8 @@ contentEl.addEventListener("click", (e)=>{
       console.error(err);
       finishLoadingProgress(false);
       setTimeout(()=>hideOverlay(), 380);
-      setStatus("載入失敗：" + (err?.message || err), false);
+      hideFaqInline();
+    setStatus("載入失敗：" + (err?.message || err), false);
     });
   }
 })();
