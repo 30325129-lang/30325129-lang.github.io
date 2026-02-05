@@ -206,6 +206,48 @@ padding:12px;
 font-size:13px;
 color:#6b7280;
 }
+/* =========================
+      ✅ 同名角色選擇 / 只看此角色
+   ========================= */
+.dupe-panel{
+  margin-top:10px;
+  padding:10px;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  background:#fafafa;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+.dupe-panel .label{font-size:13px;color:#6b7280;user-select:none}
+.dupe-panel select{min-width:260px}
+.miniBtn{
+  font-size:12px;
+  padding:6px 10px;
+  border-radius:10px;
+  border:1px solid #d1d5db;
+  background:#fff;
+  color:#111827;
+  cursor:pointer;
+}
+.miniBtn.primary{background:#111827;color:#fff;border-color:#111827}
+.miniBtn:disabled{opacity:.6;cursor:not-allowed}
+
+/* ===== FAQ Modal（查不到角色時跳出） ===== */
+.modal{position:fixed;inset:0;z-index:10001;display:none}
+.modal.show{display:block}
+.modal-backdrop{position:absolute;inset:0;background:rgba(17,24,39,.45);backdrop-filter: blur(2px)}
+.modal-card{position:relative;width:min(680px,92vw);margin:8vh auto 0;background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 14px 40px rgba(0,0,0,.18);padding:14px 14px 12px}
+.modal-head{display:flex;align-items:center;gap:10px;padding:4px 6px 10px}
+.modal-title{font-weight:800;font-size:16px}
+button.modal-close{margin-left:auto;background:#fff;color:#111827;border-color:#d1d5db}
+.modal-body{padding:0 6px 10px;font-size:14px;line-height:1.65}
+.modal-body a{color:#111827;text-decoration:underline}
+.modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:0 6px 6px}
+.faq-q{font-weight:700;margin:0 0 6px}
+.faq-p{margin:0 0 8px}
+
 </style>
 <!-- ✅ 注意：rank.html 故意不放 AdSense script，避免 Loading 畫面投放又被判定「沒有發布內容」 -->
 </head>
@@ -230,13 +272,37 @@ color:#6b7280;
 </div>
 </div>
 
+
+<!-- FAQ Modal：查不到角色時提示如何收錄 -->
+<div id="faqModal" class="modal" aria-hidden="true">
+  <div class="modal-backdrop" data-close="faqModal" aria-hidden="true"></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="faqTitle">
+    <div class="modal-head">
+      <div id="faqTitle" class="modal-title">常見問題</div>
+      <button id="faqCloseBtn" type="button" class="secondary modal-close" aria-label="關閉">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="faq-q">Q：查不到角色怎麼辦？＆ 轉移過伺服器也一樣要重新搜尋登錄！</div>
+      <div class="faq-p">本資料庫收錄 挑戰者服 260 以上、一般服 270 以上角色。</div>
+      <div class="faq-p">若符合條件但未顯示，請至
+        <a href="https://opencheapgpt.pse.is/opencheapgpt" target="_blank" rel="noopener">https://opencheapgpt.pse.is/opencheapgpt</a>
+        搜尋角色暱稱，數分鐘後將自動收錄，或隔天再查詢看看。
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button id="faqOkBtn" type="button">知道了</button>
+    </div>
+  </div>
+</div>
+
+
 <div class="card">
 <h1>挑戰者伺服器（或其他伺服器）經驗值 / 戰力 / 職業內排名 查詢</h1>
 
     <div class="intro">
       <div class="muted">
         本頁為查詢工具頁。若要看完整介紹/FAQ 請回 <a href="./index.html"><b>首頁</b></a>；
-        隱私權政策請見 <a href="./privacy.html"><b>privacy.html</b></a>。
+        <a href="./privacy.html"><b>隱私權政策</b></a>。
   
       </div>
     </div>
@@ -306,6 +372,10 @@ const overlaySub = $("overlaySub");
 const progressBar = $("progressBar");
 const progressPct = $("progressPct");
 const progressHint = $("progressHint");
+
+const faqModalEl = $("faqModal");
+const faqCloseBtn = $("faqCloseBtn");
+const faqOkBtn = $("faqOkBtn");
 
 const statusEl = $("status");
 const contentEl = $("content");
@@ -402,6 +472,10 @@ let loadedAt = null;
 let latestUpdated = null;
 let activeTab = "result";
 
+// ✅ 是否使用者曾「手動」調整過伺服器（避免預設=挑戰者造成首次查不到）
+let worldUserTouched = false;
+// ✅ 同名角色時：可鎖定只看其中一筆
+let pinnedRowIdx = null;
 /* ✅ 附近榜狀態 */
 let aroundState = {
 enabled: false,
@@ -628,6 +702,7 @@ function applyHistoryByIndex(idx){
   // ✅ Lazy Load：先記住想套用的 world/job，等資料載入後再套用
   pendingWorld = (it.world ?? "__ALL__").toString();
   pendingJob   = (it.job ?? "__ALL_JOB__").toString();
+  worldUserTouched = true;
 
   hideHistoryDropdown();
   activateTab("result");
@@ -710,6 +785,30 @@ function setStatus(msg, ok=true){
 statusEl.textContent = msg;
 statusEl.className = "status " + (ok ? "ok" : "bad");
 }
+
+function showFaqModal(){
+  if (!faqModalEl) return;
+  faqModalEl.classList.add("show");
+  faqModalEl.setAttribute("aria-hidden","false");
+  // 讓使用者可直接按 Enter 關閉
+  if (faqOkBtn) faqOkBtn.focus({preventScroll:true});
+}
+function hideFaqModal(){
+  if (!faqModalEl) return;
+  faqModalEl.classList.remove("show");
+  faqModalEl.setAttribute("aria-hidden","true");
+}
+if (faqCloseBtn) faqCloseBtn.addEventListener("click", hideFaqModal);
+if (faqOkBtn) faqOkBtn.addEventListener("click", hideFaqModal);
+document.addEventListener("click", (e) => {
+  const t = e.target;
+  if (!t) return;
+  if (t.getAttribute && t.getAttribute("data-close") === "faqModal") hideFaqModal();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && faqModalEl && faqModalEl.classList.contains("show")) hideFaqModal();
+});
+
 function normalizeText(v){
 const s = (v ?? "").toString();
 return s.replace(/\u00A0/g,"").replace(/\u3000/g,"").trim();
@@ -1149,7 +1248,17 @@ opt.textContent = w;
 worldSelect.appendChild(opt);
 }
 
-if (worlds.includes("挑戰者")) worldSelect.value = "挑戰者";
+// ✅ 預設伺服器：
+// - 若使用者已輸入名稱準備查詢：預設用「全部伺服器」，避免同名角色但不在挑戰者時第一次查不到
+// - 否則維持原本習慣：若有「挑戰者」就預設挑戰者
+const hasNameForSearch = !!normalizeText(nameInput.value);
+if (hasNameForSearch){
+  worldSelect.value = "__ALL__";
+} else if (worlds.includes("挑戰者")){
+  worldSelect.value = "挑戰者";
+} else {
+  worldSelect.value = "__ALL__";
+}
 
 refreshJobOptions(false);
 
@@ -1211,113 +1320,202 @@ return pack;
 }
 
 function runSearch(){
-activeTab = "result";
-hideAroundControls();
+  activeTab = "result";
+  hideAroundControls();
 
-const targetName = normalizeText(nameInput.value);
-const targetWorld = worldSelect.value;
+  const targetName = normalizeText(nameInput.value);
+  const selectedWorld = worldSelect.value;
 
-if (!targetName){
-setStatus("請先輸入角色名稱。", false);
-contentEl.innerHTML = "";
-return;
-}
+  if (!targetName){
+    setStatus("請先輸入角色名稱。", false);
+    contentEl.innerHTML = "";
+    return;
+  }
 
-// ✅ 只要有查詢，就記錄（不論有沒有查到）
-addSearchHistory(targetName, targetWorld, jobSelect.value || "__ALL_JOB__");
+  // ✅ 只要有查詢，就記錄（不論有沒有查到）
+  addSearchHistory(targetName, selectedWorld, jobSelect.value || "__ALL_JOB__");
 
-let candidates = rows.filter(r => r.name === targetName);
-if (targetWorld !== "__ALL__"){
-candidates = candidates.filter(r => r.world === targetWorld);
-}
+  // 先找出所有同名（跨伺服器）
+  const allSameName = rows.filter(r => r.name === targetName);
 
-if (!candidates.length){
-const fuzzy = rows
-.filter(r => r.name.includes(targetName) && (targetWorld==="__ALL__" || r.world===targetWorld))
-.slice(0, 20);
+  // 先依目前下拉篩選（可能是預設=挑戰者）
+  let candidates = allSameName;
+  let usedWorld = selectedWorld;
+  let autoAllWorld = false;
 
-setStatus(`找不到「${targetName}」${targetWorld==="__ALL__"?"":`（${targetWorld}）`}。`, false);
+  if (selectedWorld !== "__ALL__"){
+    candidates = allSameName.filter(r => r.world === selectedWorld);
 
-if (fuzzy.length){
-contentEl.innerHTML =
-`<div class="muted">可能是名稱不完全一致，以下是包含「${escapeHtml(targetName)}」的前 20 筆：</div>` +
-tableHtml(["遊戲ID","伺服器","職業","等級","經驗值%","戰鬥力","更新時間"], fuzzy.map(r=>{
-const s = splitLevelExpRate(r.exp);
-const bpText = formatBattlePower(r.bp);
-return [
-escapeHtml(r.name),
-escapeHtml(r.world),
-escapeHtml(r.job),
-s.level,
-s.expPct,
-`<span title="${escapeHtml(r.bp ?? "")}">${escapeHtml(bpText)}</span>`,
-`<span class="nowrap">${escapeHtml(r.updatedText || "-")}</span>`
-];
-}));
-} else {
-contentEl.innerHTML = "";
-}
-return;
-}
+    // ✅ 修正：若在預設伺服器找不到，但其他伺服器有同名角色
+    if (!candidates.length && allSameName.length){
+      autoAllWorld = true;
+      usedWorld = "__ALL__";
+      candidates = allSameName;
 
-const rankWorldKey = (targetWorld === "__ALL__") ? "__ALL__" : null;
-const globalPack = (rankWorldKey === "__ALL__") ? buildRanks("__ALL__") : null;
+      // 反映到 UI：改成「全部伺服器」讓使用者知道目前的查詢範圍
+      worldSelect.value = "__ALL__";
+      refreshJobOptions(true);
+    }
+  } else {
+    usedWorld = "__ALL__";
+  }
 
-const out = candidates.map(r => {
-const pack = (rankWorldKey === "__ALL__") ? globalPack : buildRanks(r.world);
+  // ✅ 同名鎖定（只看其中一筆）
+  if (pinnedRowIdx !== null){
+    const pinned = candidates.filter(r => r.rowIdx === pinnedRowIdx);
+    if (pinned.length){
+      candidates = pinned;
+    } else {
+      pinnedRowIdx = null;
+    }
+  }
 
-const expRank = (r.exp !== null) ? (pack.expRank.get(r.rowIdx) ?? "-") : "-";
-const bpRank  = (r.bp  !== null) ? (pack.bpRank.get(r.rowIdx)  ?? "-") : "-";
+  if (!candidates.length){
+    const fuzzy = rows
+      .filter(r => r.name.includes(targetName) && (selectedWorld==="__ALL__" || r.world===selectedWorld))
+      .slice(0, 20);
 
-const jobPack = buildJobRanks((rankWorldKey === "__ALL__") ? "__ALL__" : r.world, r.job);
-const expJobRank = (r.exp !== null) ? (jobPack.expJobRank.get(r.rowIdx) ?? "-") : "-";
-const bpJobRank  = (r.bp  !== null) ? (jobPack.bpJobRank.get(r.rowIdx)  ?? "-") : "-";
+    setStatus(`找不到「${targetName}」${selectedWorld==="__ALL__"?"":`（${selectedWorld}）`}。`, false);
+    showFaqModal();
 
-return {
-rowIdx: r.rowIdx,
-name: r.name,
-world: r.world,
-job: r.job,
-exp: r.exp,
-expRank,
-expJobRank,
-bp: r.bp,
-bpRank,
-bpJobRank,
-updatedText: r.updatedText || "-"
-};
-});
+    if (fuzzy.length){
+      contentEl.innerHTML =
+        `<div class="muted">可能是名稱不完全一致，以下是包含「${escapeHtml(targetName)}」的前 20 筆：</div>` +
+        tableHtml(["遊戲ID","伺服器","職業","等級","經驗值%","戰鬥力","更新時間"], fuzzy.map(r=>{
+          const s = splitLevelExpRate(r.exp);
+          const bpText = formatBattlePower(r.bp);
+          return [
+            escapeHtml(r.name),
+            escapeHtml(r.world),
+            escapeHtml(r.job),
+            s.level,
+            s.expPct,
+            `<span title="${escapeHtml(r.bp ?? "")}">${escapeHtml(bpText)}</span>`,
+            `<span class="nowrap">${escapeHtml(r.updatedText || "-")}</span>`
+          ];
+        }));
+    } else {
+      contentEl.innerHTML = "";
+    }
+    return;
+  }
 
-out.sort((a,b)=> (b.exp??-1)-(a.exp??-1));
+  // ✅ 是否用「全部伺服器合併排名」：
+  // - 只有「使用者明確切到全部伺服器」才用合併排名
+  // - 若是因為預設伺服器查不到而自動改成全部（autoAllWorld），就用各伺服器各自排名（比較直覺）
+  const useCombinedAllWorldRank = (usedWorld === "__ALL__" && worldUserTouched && !autoAllWorld);
+  const globalPack = useCombinedAllWorldRank ? buildRanks("__ALL__") : null;
 
-setStatus(`找到 ${out.length} 筆「${targetName}」資料。`, true);
+  const out = candidates.map(r => {
+    const pack = useCombinedAllWorldRank ? globalPack : buildRanks(r.world);
 
-contentEl.innerHTML = tableHtml(
-["遊戲ID","伺服器","職業","等級","經驗值%","經驗排名","職業經驗排名","戰鬥力","戰力排名","職業戰力排名","更新時間"],
-out.map(x => {
-const s = splitLevelExpRate(x.exp);
-const bpText = formatBattlePower(x.bp);
-return [
-`<span class="pill">${escapeHtml(x.name)}</span>`,
-escapeHtml(x.world),
-escapeHtml(x.job),
-s.level,
-s.expPct,
-(x.expRank === "-" ? "-" : `第${x.expRank}名`),
-(x.expJobRank === "-" ? "-" : `第${x.expJobRank}名`),
-`<span title="${escapeHtml(x.bp ?? "")}">${escapeHtml(bpText)}</span>`,
-(x.bpRank === "-" ? "-" : `第${x.bpRank}名`),
-(x.bpJobRank === "-" ? "-" : `第${x.bpJobRank}名`),
-`<span class="nowrap">${escapeHtml(x.updatedText || "-")}</span>`
-];
-})
-);
+    const expRank = (r.exp !== null) ? (pack.expRank.get(r.rowIdx) ?? "-") : "-";
+    const bpRank  = (r.bp  !== null) ? (pack.bpRank.get(r.rowIdx)  ?? "-") : "-";
 
-if (out.length === 1){
-const one = out[0];
-const worldKey = (worldSelect.value === "__ALL__") ? "__ALL__" : one.world;
-initAroundForSingleResult(one, worldKey);
-}
+    const jobPack = buildJobRanks(useCombinedAllWorldRank ? "__ALL__" : r.world, r.job);
+    const expJobRank = (r.exp !== null) ? (jobPack.expJobRank.get(r.rowIdx) ?? "-") : "-";
+    const bpJobRank  = (r.bp  !== null) ? (jobPack.bpJobRank.get(r.rowIdx)  ?? "-") : "-";
+
+    return {
+      rowIdx: r.rowIdx,
+      name: r.name,
+      world: r.world,
+      job: r.job,
+      exp: r.exp,
+      expRank,
+      expJobRank,
+      bp: r.bp,
+      bpRank,
+      bpJobRank,
+      updatedText: r.updatedText || "-"
+    };
+  });
+
+  out.sort((a,b)=> (b.exp??-1)-(a.exp??-1));
+
+  // ✅ 狀態訊息
+  if (autoAllWorld){
+    setStatus(`在「${selectedWorld}」找不到「${targetName}」，但其他伺服器有同名角色，已改用「全部伺服器」結果。`, true);
+  } else {
+    setStatus(`找到 ${out.length} 筆「${targetName}」資料。`, true);
+  }
+
+  // ✅ 同名角色選擇面板（跨伺服器）
+  let panelHtml = "";
+  const totalSameName = allSameName.length;
+
+  if (totalSameName > 1){
+    const pickList = allSameName
+      .slice()
+      .sort((a,b)=> (b.exp??-1)-(a.exp??-1));
+
+    const optionsHtml = pickList.map(r=>{
+      const s = splitLevelExpRate(r.exp);
+      const bpText = formatBattlePower(r.bp);
+      const label =
+        `${r.world}｜${r.job}｜Lv ${s.level}｜BP ${bpText}｜更新 ${r.updatedText || "-"}`;
+      const selected = (pinnedRowIdx !== null && r.rowIdx === pinnedRowIdx) ? " selected" : "";
+      return `<option value="${r.rowIdx}"${selected}>${escapeHtml(label)}</option>`;
+    }).join("");
+
+    const modeNote = useCombinedAllWorldRank
+      ? "（目前：全部伺服器合併排名）"
+      : "（目前：各伺服器各自排名）";
+
+    panelHtml = `
+      <div class="dupe-panel">
+        <span class="label">發現同名角色共 ${totalSameName} 筆 ${modeNote}，請選擇要查看哪一筆：</span>
+        <select id="dupePickSelect">${optionsHtml}</select>
+        <button type="button" class="miniBtn primary" data-action="pinPick">只看這筆</button>
+        <button type="button" class="miniBtn" data-action="clearPin">顯示全部</button>
+      </div>
+    `;
+  } else if (pinnedRowIdx !== null){
+    // 理論上不會進來，但保險
+    panelHtml = `
+      <div class="dupe-panel">
+        <span class="label">目前已鎖定只看一筆。</span>
+        <button type="button" class="miniBtn" data-action="clearPin">取消鎖定</button>
+      </div>
+    `;
+  }
+
+  // ✅ 表格（加上「操作」欄位）
+  contentEl.innerHTML = panelHtml + tableHtml(
+    ["操作","遊戲ID","伺服器","職業","等級","經驗值%","經驗排名","職業經驗排名","戰鬥力","戰力排名","職業戰力排名","更新時間"],
+    out.map(x => {
+      const s = splitLevelExpRate(x.exp);
+      const bpText = formatBattlePower(x.bp);
+
+      const isPinned = (pinnedRowIdx !== null && pinnedRowIdx === x.rowIdx);
+      const btnText = isPinned ? "已選" : "只看";
+      const btnDisabled = isPinned ? " disabled" : "";
+
+      return [
+        `<button type="button" class="miniBtn${isPinned ? "" : ""}" data-action="pin" data-rowidx="${x.rowIdx}"${btnDisabled}>${btnText}</button>`,
+        `<span class="pill">${escapeHtml(x.name)}</span>`,
+        escapeHtml(x.world),
+        escapeHtml(x.job),
+        s.level,
+        s.expPct,
+        (x.expRank === "-" ? "-" : `第${x.expRank}名`),
+        (x.expJobRank === "-" ? "-" : `第${x.expJobRank}名`),
+        `<span title="${escapeHtml(x.bp ?? "")}">${escapeHtml(bpText)}</span>`,
+        (x.bpRank === "-" ? "-" : `第${x.bpRank}名`),
+        (x.bpJobRank === "-" ? "-" : `第${x.bpJobRank}名`),
+        `<span class="nowrap">${escapeHtml(x.updatedText || "-")}</span>`
+      ];
+    })
+  );
+
+  // ✅ 只有單筆結果才顯示「附近榜」
+  if (out.length === 1){
+    const one = out[0];
+
+    // 若使用者明確選了「全部伺服器」且用合併排名，附近榜就用合併榜；否則用該伺服器榜
+    const worldKey = (useCombinedAllWorldRank && worldSelect.value === "__ALL__") ? "__ALL__" : one.world;
+    initAroundForSingleResult(one, worldKey);
+  }
 }
 
 function renderTop(metric){
@@ -1470,6 +1668,7 @@ nameInput.addEventListener("dblclick", ()=>{
 });
 /* ✅ 當下拉開著時，輸入會即時篩選 */
 nameInput.addEventListener("input", ()=>{
+  pinnedRowIdx = null;
   if (isHistoryShown()){
     renderHistoryDropdown(nameInput.value);
     positionHistoryDropdown();
@@ -1508,6 +1707,7 @@ nameInput.addEventListener("keydown", (e)=>{
         nameInput.value = (it.name ?? "").toString();
         pendingWorld = (it.world ?? "__ALL__").toString();
         pendingJob = (it.job ?? "__ALL_JOB__").toString();
+        worldUserTouched = true;
       }
       hideHistoryDropdown();
       activateTab("result");
@@ -1544,6 +1744,8 @@ btnDown50.addEventListener("click", ()=>shiftAround(+1));
 
 worldSelect.addEventListener("change", ()=>{
   if (!dataLoaded) return;
+  worldUserTouched = true;
+  pinnedRowIdx = null;
   refreshJobOptions(true);
   hideAroundControls();
 
@@ -1558,6 +1760,55 @@ jobSelect.addEventListener("change", ()=>{
   if (activeTab === "topBp") renderTop("bp");
 });
 
+/* ✅ 同名角色：點「只看」/ 下拉選擇 */
+function pinByRowIdx(rowIdx){
+  const idx = Number(rowIdx);
+  if (!Number.isFinite(idx)) return;
+  const r = rows.find(x => x.rowIdx === idx);
+  if (!r) return;
+
+  pinnedRowIdx = idx;
+
+  // 切到該角色所在伺服器（確保附近榜/排名都是對的）
+  worldSelect.value = r.world;
+  worldUserTouched = true;
+  refreshJobOptions(true);
+
+  runSearch();
+}
+
+contentEl.addEventListener("click", (e)=>{
+  const btn = e.target.closest("[data-action]");
+  if (!btn) return;
+
+  const act = btn.getAttribute("data-action");
+
+  if (act === "pin"){
+    const idx = btn.getAttribute("data-rowidx");
+    pinByRowIdx(idx);
+    return;
+  }
+
+  if (act === "pinPick"){
+    const sel = document.getElementById("dupePickSelect");
+    if (!sel) return;
+    pinByRowIdx(sel.value);
+    return;
+  }
+
+  if (act === "clearPin"){
+    pinnedRowIdx = null;
+
+    // 顯示全部同名角色：切到「全部伺服器」
+    worldSelect.value = "__ALL__";
+    worldUserTouched = true;
+    refreshJobOptions(true);
+
+    runSearch();
+    return;
+  }
+});
+
 /* ====== 初始化 ====== */
 (function init(){
   applyDataLoadedUi();
@@ -1569,7 +1820,7 @@ jobSelect.addEventListener("change", ()=>{
   const qJob   = sp.get("job");
 
   if (qName) nameInput.value = qName;
-  if (qWorld) pendingWorld = qWorld;
+  if (qWorld) { pendingWorld = qWorld; worldUserTouched = true; }
   if (qJob) pendingJob = qJob;
 
   if (qName || qWorld || qJob){
