@@ -786,27 +786,79 @@ statusEl.textContent = msg;
 statusEl.className = "status " + (ok ? "ok" : "bad");
 }
 
-function showFaqModal(){
-  if (!faqModalEl) return;
-  faqModalEl.classList.add("show");
-  faqModalEl.setAttribute("aria-hidden","false");
-  // 讓使用者可直接按 Enter 關閉
-  if (faqOkBtn) faqOkBtn.focus({preventScroll:true});
+function ensureFaqModalDom(){
+  // ✅ 保險：就算使用者部署到舊版（不小心沒帶 faqModal），也能動態補上
+  let el = document.getElementById("faqModal");
+  if (el) return el;
+
+  const html = `
+<div id="faqModal" class="modal" aria-hidden="true">
+  <div class="modal-backdrop" data-close="faqModal" aria-hidden="true"></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="faqTitle">
+    <div class="modal-head">
+      <div id="faqTitle" class="modal-title">常見問題</div>
+      <button id="faqCloseBtn" type="button" class="secondary modal-close" aria-label="關閉">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="faq-q">Q：查不到角色怎麼辦？＆ 轉移過伺服器也一樣要重新搜尋登錄！</div>
+      <div class="faq-p">本資料庫收錄 挑戰者服 260 以上、一般服 270 以上角色。</div>
+      <div class="faq-p">第一次查詢，請至
+        <a href="https://opencheapgpt.pse.is/opencheapgpt" target="_blank" rel="noopener">https://opencheapgpt.pse.is/opencheapgpt</a>
+        輸入角色名稱，數分鐘後將自動收錄，或隔天再查詢看看。
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button id="faqOkBtn" type="button">知道了</button>
+    </div>
+  </div>
+</div>`;
+  document.body.insertAdjacentHTML("afterbegin", html);
+  el = document.getElementById("faqModal");
+  return el;
 }
+
+function showFaqModal(){
+  const el = ensureFaqModalDom();
+  if (!el) return;
+
+  // ✅ 用 inline style 強制顯示（避免任何 CSS / 快取 / 覆蓋規則導致 .show 無效）
+  el.classList.add("show");
+  el.style.display = "block";
+  el.style.zIndex = "200000";
+  el.setAttribute("aria-hidden","false");
+
+  // 讓使用者可直接按 Enter 關閉（部分瀏覽器 focus(options) 可能不支援，所以 try/catch）
+  try{
+    const ok = el.querySelector("#faqOkBtn");
+    if (ok && ok.focus) ok.focus({preventScroll:true});
+  } catch {
+    // ignore
+  }
+}
+
 function hideFaqModal(){
-  if (!faqModalEl) return;
-  faqModalEl.classList.remove("show");
-  faqModalEl.setAttribute("aria-hidden","true");
+  const el = document.getElementById("faqModal");
+  if (!el) return;
+  el.classList.remove("show");
+  el.style.display = "none";
+  el.setAttribute("aria-hidden","true");
 }
 if (faqCloseBtn) faqCloseBtn.addEventListener("click", hideFaqModal);
 if (faqOkBtn) faqOkBtn.addEventListener("click", hideFaqModal);
 document.addEventListener("click", (e) => {
   const t = e.target;
   if (!t) return;
+
+  // ✅ 動態插入時也能關閉（保險）
+  if (t.id === "faqCloseBtn" || t.id === "faqOkBtn") {
+    hideFaqModal();
+    return;
+  }
+
   if (t.getAttribute && t.getAttribute("data-close") === "faqModal") hideFaqModal();
 });
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && faqModalEl && faqModalEl.classList.contains("show")) hideFaqModal();
+  if (e.key === "Escape" && document.getElementById("faqModal")?.classList.contains("show")) hideFaqModal();
 });
 
 function normalizeText(v){
