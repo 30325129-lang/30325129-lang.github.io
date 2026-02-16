@@ -378,6 +378,16 @@ const SHEET_NAME = "character_data";
 /** ✅ 過濾異常戰鬥力：>= 100 億 直接排除（避免榜單被污染） */
 const BP_EXCLUDE_MIN = 10_000_000_000;
 
+// ✅ 過濾指定名稱（宣傳/測試資料）
+// - 你可在這裡持續新增想排除的名字或關鍵字
+const NAME_EXCLUDE = new Set([
+  "想變得跟我一樣強嗎? (搜尋DanceGPT)"
+]);
+// 只要名字符合其中任一條，就會整筆排除
+const NAME_EXCLUDE_PATTERNS = [
+  /搜尋\s*DanceGPT/i,
+];
+
 const $ = (id) => document.getElementById(id);
 
 const overlay = $("overlay");
@@ -1299,12 +1309,31 @@ const beforeCount = tmpRows.length;
 tmpRows = tmpRows.filter(r => !(r.bp !== null && r.bp >= BP_EXCLUDE_MIN));
 const removedCount = beforeCount - tmpRows.length;
 
+// ✅ 過濾指定名稱（宣傳/測試資料）
+// - 避免榜單被惡意/宣傳資料污染
+const beforeNameCount = tmpRows.length;
+tmpRows = tmpRows.filter(r => {
+  const n = normalizeText(r.name);
+  if (!n) return false;
+  if (NAME_EXCLUDE.has(n)) return false;
+  for (const re of NAME_EXCLUDE_PATTERNS){
+    try{
+      if (re && re.test && re.test(n)) return false;
+    } catch {}
+  }
+  return true;
+});
+const removedNameCount = beforeNameCount - tmpRows.length;
+
 // ✅ 重新連號 rowIdx（避免 rank map 用舊 idx）
 rows = tmpRows.map((r, newIdx) => ({ ...r, rowIdx: newIdx }));
 
 // ✅ 如果有移除，印 log（不影響 UI）
 if (removedCount > 0){
 console.warn(`已過濾異常戰鬥力資料：${removedCount} 筆（bp >= ${BP_EXCLUDE_MIN}）`);
+}
+if (removedNameCount > 0){
+console.warn(`已過濾指定名稱資料：${removedNameCount} 筆`);
 }
 
 rankCache.clear();
