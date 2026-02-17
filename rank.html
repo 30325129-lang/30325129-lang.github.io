@@ -381,11 +381,15 @@ const BP_EXCLUDE_MIN = 10_000_000_000;
 // ✅ 過濾指定名稱（宣傳/測試資料）
 // - 你可在這裡持續新增想排除的名字或關鍵字
 const NAME_EXCLUDE = new Set([
-  "想變得跟我一樣強嗎? (搜尋DanceGPT)"
+"想變得跟我一樣強嗎? (搜尋DanceGPT)",
+  "想跟我一樣請搜 DanceGPT",
+  "想跟我一樣請搜DanceGPT"
 ]);
 // 只要名字符合其中任一條，就會整筆排除
 const NAME_EXCLUDE_PATTERNS = [
-  /搜尋\s*DanceGPT/i,
+/搜尋\s*DanceGPT/i,
+  /搜\s*DanceGPT/i,
+  /DanceGPT/i,
 ];
 
 const $ = (id) => document.getElementById(id);
