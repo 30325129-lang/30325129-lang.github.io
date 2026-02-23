@@ -42,6 +42,8 @@ th{background:#f9fafb;position:sticky;top:0;z-index:1}
 .tabs button.active{background:#111827;color:#fff;border-color:#111827}
 .small{font-size:12px;color:#6b7280}
 .right{margin-left:auto}
+
+.controls{display:inline-flex;gap:8px;align-items:center;margin-left:8px}
 .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
 .nowrap{white-space:nowrap}
 
@@ -340,6 +342,7 @@ button.modal-close{margin-left:auto;background:#fff;color:#111827;border-color:#
 <button id="tabTopExp">前 100 名（經驗）</button>
 <button id="tabTopBp">前 100 名（戰力）</button>
 <span class="right small" id="metaInfo"></span>
+  <span class="controls"></span>
 </div>
 
 <div id="status" class="status"></div>
@@ -367,13 +370,6 @@ button.modal-close{margin-left:auto;background:#fff;color:#111827;border-color:#
 
 <div id="content"></div>
 
-<div class="intro">
-  <div class="muted"><b>白/黑名單 key（管理員模式）</b><br>
-  右上角「管理員模式」登入後，對單筆資料可直接按：<b>白</b>（白名單：永久免疫檢舉自動隱藏）、<b>黑</b>（強制黑名單）、<b>清</b>（解除白/黑名單）、<b>0</b>（檢舉歸零）。<br>
-  key 規則：只填角色名（例如 <span class="mono">Ezra蓮</span>；跨世界同名都生效）或 世界@角色（例如 <span class="mono">挑戰者@Ezra蓮</span>；只針對該世界）。<br>
-  </div>
-</div>
-
 <div class="muted" style="margin-top:14px">
 ← <a href="./index.html">回首頁</a>　|　<a href="./privacy.html">隱私權政策</a>
 </div>
@@ -383,7 +379,7 @@ button.modal-close{margin-left:auto;background:#fff;color:#111827;border-color:#
   // ✅ 檢舉系統設定：只要改這裡（不需要改內碼）
   window.RANK_REPORT_HIDE_THRESHOLD = 3;      // 幾次檢舉就自動隱藏
   window.RANK_REPORT_RATE_LIMIT_HOURS = 24;  // 同一台裝置同一角色多久只能檢舉一次
-  window.RANK_REPORT_API_URL = "https://script.google.com/macros/s/AKfycbwL6S__yGbYsyH6lAtsWzGtADbYuJWnOD3uy--eQmBOZQntQlwfkEOWkagZIyKk10-kOQ/exec";           // TODO: 貼上 Google Apps Script Web App /exec URL（留空＝只做本機隱藏）
+  window.RANK_REPORT_API_URL = "";           // TODO: 貼上 Google Apps Script Web App /exec URL（留空＝只做本機隱藏）
 </script>
 
 <script>
@@ -1353,34 +1349,6 @@ button.modal-close{margin-left:auto;background:#fff;color:#111827;border-color:#
 
 <div class="muted" style="margin-top:10px">瀏覽人數統計：<span data-visit-count>（載入中…）</span></div>
 
-<script>
-(function(){
-  const el = document.querySelector('[data-visit-count]');
-  const base = String(window.RANK_REPORT_API_URL || '').trim();
-  if (!el || !base) return;
-
-  const cb = "__visit_cb_" + Math.random().toString(36).slice(2);
-  let tag = null;
-
-  window[cb] = function(res){
-    try{
-      const v = (res && typeof res.value !== "undefined") ? res.value : "";
-      el.textContent = (v === "" || v === null) ? "0" : String(v);
-    } finally {
-      try { if (tag && tag.parentNode) tag.parentNode.removeChild(tag); } catch (e) {}
-      try { delete window[cb]; } catch (e) { window[cb] = undefined; }
-    }
-  };
-
-  const sep = base.includes("?") ? "&" : "?";
-  tag = document.createElement("script");
-  tag.src = base + sep + "callback=" + encodeURIComponent(cb);
-  tag.onerror = function(){
-    el.textContent = "（載入失敗）";
-    try { delete window[cb]; } catch (e) {}
-  };
-  document.head.appendChild(tag);
-})();
-</script>
+<script src="./counter.js"></script>
 </body>
 </html>
