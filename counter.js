@@ -1,10 +1,21 @@
 // counter.js - GitHub Pages 瀏覽人數統計（JSONP）
-// 使用者提供的 Apps Script：https://script.google.com/macros/s/AKfycbwL6S__yGbYsyH6lAtsWzGtADbYuJWnOD3uy--eQmBOZQntQlwfkEOWkagZIyKk10-kOQ/exec
-// 需求：不需要每頁貼 URL，只要引入這支 counter.js
+// ✅ 支援與檢舉系統共用同一支 Apps Script /exec：
+//    - 若頁面有設定 window.RANK_REPORT_API_URL，就優先使用它
+//    - 否則使用下方 COUNTER_ENDPOINT（只要改這裡一次，全站所有頁面都會套用）
+//
+// 回傳格式相容：callback({value:n}) / callback({count:n}) / callback(n)
 
 (function () {
+  // ✅ 預設端點（你只要改這行）
   var COUNTER_ENDPOINT = "https://script.google.com/macros/s/AKfycbwL6S__yGbYsyH6lAtsWzGtADbYuJWnOD3uy--eQmBOZQntQlwfkEOWkagZIyKk10-kOQ/exec";
-  var CALLBACK_NAME = "visitCounterCallback_" + Math.random().toString(36).slice(2);
+
+  function pickEndpoint() {
+    try {
+      var u = (window && window.RANK_REPORT_API_URL) ? String(window.RANK_REPORT_API_URL).trim() : "";
+      if (u) return u;
+    } catch (e) {}
+    return COUNTER_ENDPOINT;
+  }
 
   function setAll(text) {
     try {
@@ -14,65 +25,67 @@
     } catch (e) {}
   }
 
-  function cleanup(scriptEl) {
-    try { if (scriptEl && scriptEl.parentNode) scriptEl.parentNode.removeChild(scriptEl); } catch (e) {}
-    try { delete window[CALLBACK_NAME]; } catch (e) {}
-  }
+  function run() {
+    // 若頁面沒有放 data-visit-count，就不做任何事（但仍允許你用同一支 counter.js 全站共用）
+    if (!document.querySelector("[data-visit-count]")) return;
 
-  // 預設顯示
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", function () {
-      if (!document.querySelector("[data-visit-count]")) return;
-      setAll("（載入中…）");
-    });
-  } else {
-    if (document.querySelector("[data-visit-count]")) setAll("（載入中…）");
-  }
+    setAll("（載入中…）");
 
-  // 若頁面沒有放 data-visit-count，就不做任何事
-  if (!document.querySelector("[data-visit-count]")) return;
+    var endpoint = pickEndpoint();
+    var CALLBACK_NAME = "visitCounterCallback_" + Math.random().toString(36).slice(2);
 
-  var timeout = setTimeout(function () {
-    setAll("（載入失敗）");
-    cleanup(script);
-  }, 8000);
-
-  window[CALLBACK_NAME] = function (data) {
-    clearTimeout(timeout);
-    try {
-      // 兼容多種回傳格式：{count:123} / {value:123} / {total:123} / number
-      var n = null;
-      if (typeof data === "number") n = data;
-      if (data && typeof data === "object") {
-        if (typeof data.count === "number") n = data.count;
-        else if (typeof data.value === "number") n = data.value;
-        else if (typeof data.total === "number") n = data.total;
-        else if (typeof data.visits === "number") n = data.visits;
-      }
-      if (n === null || !isFinite(n)) {
-        setAll("（載入失敗）");
-      } else {
-        setAll(String(Math.floor(n)));
-      }
-    } catch (e) {
-      setAll("（載入失敗）");
+    function cleanup(scriptEl) {
+      try { if (scriptEl && scriptEl.parentNode) scriptEl.parentNode.removeChild(scriptEl); } catch (e) {}
+      try { delete window[CALLBACK_NAME]; } catch (e) {}
     }
-    cleanup(script);
-  };
 
-  // JSONP：?callback=xxx
-  var url = COUNTER_ENDPOINT;
-  url += (url.indexOf("?") >= 0 ? "&" : "?") + "callback=" + encodeURIComponent(CALLBACK_NAME);
-  // 你若 Apps Script 需要指定站點/頁面，可在此加參數，例如 page=...
-  // url += "&page=" + encodeURIComponent(location.pathname);
+    var script = null;
+    var timeout = setTimeout(function () {
+      setAll("（載入失敗）");
+      cleanup(script);
+    }, 8000);
 
-  var script = document.createElement("script");
-  script.src = url;
-  script.async = true;
-  script.onerror = function () {
-    clearTimeout(timeout);
-    setAll("（載入失敗）");
-    cleanup(script);
-  };
-  document.head.appendChild(script);
+    window[CALLBACK_NAME] = function (data) {
+      clearTimeout(timeout);
+      try {
+        var n = null;
+        if (typeof data === "number") n = data;
+        if (data && typeof data === "object") {
+          if (typeof data.count === "number") n = data.count;
+          else if (typeof data.value === "number") n = data.value;
+          else if (typeof data.total === "number") n = data.total;
+          else if (typeof data.visits === "number") n = data.visits;
+        }
+        if (n === null || !isFinite(n)) {
+          setAll("（載入失敗）");
+        } else {
+          setAll(String(Math.floor(n)));
+        }
+      } catch (e) {
+        setAll("（載入失敗）");
+      }
+      cleanup(script);
+    };
+
+    // JSONP：?action=visits&callback=xxx
+    var url = endpoint;
+    url += (url.indexOf("?") >= 0 ? "&" : "?") + "action=visits";
+    url += "&callback=" + encodeURIComponent(CALLBACK_NAME);
+
+    script = document.createElement("script");
+    script.src = url;
+    script.async = true;
+    script.onerror = function () {
+      clearTimeout(timeout);
+      setAll("（載入失敗）");
+      cleanup(script);
+    };
+    document.head.appendChild(script);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", run);
+  } else {
+    run();
+  }
 })();
