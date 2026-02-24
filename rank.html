@@ -2362,7 +2362,8 @@ const selectedWorld = "__ALL__";
 
   // ✅ 檢舉過多自動隱藏（先抓後端黑名單，避免 F5 後重新查詢仍先看到）
   const _outKeys = out.map(x => reportKey(x.world, x.name));
-  try { await fetchReportCounts(_outKeys); } catch(_e) {}
+  // ✅ 不要阻塞查詢畫面：先用本機快取渲染，後台檢舉資料回來再自動重繪
+  try { void fetchReportCounts(_outKeys); } catch(_e) {}
   scheduleReportFetchAndRerender(_outKeys);
   const hiddenByReport = out.filter(x => isHiddenByReport(x.world, x.name));
   const outShown = out.filter(x => !shouldHideByReport(x.world, x.name));
