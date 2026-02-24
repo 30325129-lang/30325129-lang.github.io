@@ -436,6 +436,13 @@ const reportCountCache = new Map();    // key -> count（後台回傳）
 const reportModeCache  = new Map();    // key -> "WHITELIST" | "BLACKLIST"（後台回傳）
 const reportRequestedKeys = new Set(); // 避免同一 key 反覆打 API
 
+// ✅ v9.3：先下載規則（黑/白名單）到前端，避免首次查詢/前100要等 counts 才能過濾
+const reportRuleExactCache = new Map(); // key(world||name) -> mode
+const reportRuleNameCache = new Map();  // nameOnly -> mode
+let reportRulesLoaded = false;
+let reportRulesLoadingPromise = null;
+let reportRulesLoadedAt = 0;
+
 // ✅ 管理員模式（需要後台 + ADMIN_TOKEN）
 const LS_ADMIN_TOKEN = "rank_admin_v1_token";
 const LS_ADMIN_SHOW_HIDDEN = "rank_admin_v1_showHidden";
@@ -585,6 +592,7 @@ async function adminOp(op, key, label){
 
   if (op === "whitelist"){
     reportModeCache.set(key, "WHITELIST");
+    reportRuleExactCache.set(key, "WHITELIST");
     reportCountCache.set(key, 0);
     clearLocalReportForKey(key);
     setStatus(`已加入白名單：${label}（之後不會再因檢舉自動隱藏）`, true);
@@ -592,6 +600,7 @@ async function adminOp(op, key, label){
     scheduleReportFetchAndRerender([key]); // 強制回讀後台，避免只有本機快取生效
   } else if (op === "blacklist"){
     reportModeCache.set(key, "BLACKLIST");
+    reportRuleExactCache.set(key, "BLACKLIST");
     reportCountCache.set(key, 9999);
     clearLocalReportForKey(key);
     setStatus(`已強制黑名單：${label}`, true);
@@ -599,6 +608,7 @@ async function adminOp(op, key, label){
     scheduleReportFetchAndRerender([key]); // 強制回讀後台，避免只有本機快取生效
   } else if (op === "clear"){
     reportModeCache.delete(key);
+    reportRuleExactCache.delete(key);
     reportCountCache.delete(key);
     reportRequestedKeys.delete(key);
     clearLocalReportForKey(key);
@@ -623,7 +633,7 @@ async function adminOp(op, key, label){
 function adminButtonsHtml(name, world, job){
   if (!isAdmin()) return "";
   const key = reportKey(world, name);
-  const mode = reportModeCache.get(key) || "";
+  const mode = getCachedReportMode_(key) || "";
   const badge = mode === "WHITELIST"
     ? `<span class="mono" title="白名單（免疫檢舉）" style="margin-left:6px">W</span>`
     : (mode === "BLACKLIST"
@@ -647,6 +657,104 @@ function reportKey(world, name){
 function hasReportBackend(){
   return /^https?:\/\//i.test((REPORT_API_URL || "").trim());
 }
+
+function reportNameFromKey_(key){
+  const k = normalizeText(key).toLowerCase();
+  const parts = k.split("||");
+  return (parts.length >= 2) ? parts.slice(1).join("||") : k;
+}
+function getPrefetchedRuleModeByKey_(key){
+  const k = normalizeText(key).toLowerCase();
+  const modeExact = String(reportRuleExactCache.get(k) || "").toUpperCase();
+  if (modeExact === "WHITELIST" || modeExact === "BLACKLIST") return modeExact;
+  const nameOnly = reportNameFromKey_(k);
+  const modeName = String(reportRuleNameCache.get(nameOnly) || "").toUpperCase();
+  if (modeName === "WHITELIST" || modeName === "BLACKLIST") return modeName;
+  return "";
+}
+function getCachedReportMode_(key){
+  const mode = getPrefetchedRuleModeByKey_(key);
+  if (mode) return mode;
+  const mode2 = String(reportModeCache.get(key) || "").toUpperCase();
+  if (mode2 === "WHITELIST" || mode2 === "BLACKLIST") return mode2;
+  return "";
+}
+function primeRuleModeIntoRowCache_(key){
+  const mode = getPrefetchedRuleModeByKey_(key);
+  if (!mode) return "";
+  reportModeCache.set(key, mode);
+  if (mode === "WHITELIST") {
+    if (!reportCountCache.has(key)) reportCountCache.set(key, 0);
+  } else if (mode === "BLACKLIST") {
+    if (!reportCountCache.has(key)) reportCountCache.set(key, 9999);
+  }
+  return mode;
+}
+async function fetchReportRules(opts = {}){
+  const force = !!(opts && opts.force);
+  if (!hasReportBackend()) return { ok:false, loaded:0 };
+  if (!force && reportRulesLoaded) return { ok:true, loaded:0, cached:true };
+  if (!force && reportRulesLoadingPromise) return reportRulesLoadingPromise;
+
+  reportRulesLoadingPromise = (async ()=>{
+    const url = `${REPORT_API_URL}?action=rules`;
+    let js = null;
+
+    try{
+      const res = await fetch(url, { cache: "no-store" });
+      js = await res.json();
+    } catch (err){
+      try{
+        js = await jsonpRequest(url, 9000);
+      } catch (err2){
+        console.warn("黑白名單規則讀取失敗：", err2);
+        return { ok:false, loaded:0 };
+      }
+    }
+
+    if (!js || js.ok === false){
+      console.warn("黑白名單規則讀取失敗（後端回錯誤）：", js?.error || js);
+      return { ok:false, loaded:0 };
+    }
+
+    const rules = (js && typeof js === "object" && js.rules) ? js.rules : (js || {});
+    const exact = (rules && typeof rules === "object" && rules.exact) ? rules.exact : {};
+    const nameOnly = (rules && typeof rules === "object" && rules.nameOnly) ? rules.nameOnly : {};
+
+    reportRuleExactCache.clear();
+    reportRuleNameCache.clear();
+
+    let loaded = 0;
+    for (const [k, v] of Object.entries(exact || {})){
+      const key = normalizeText(k).toLowerCase();
+      const mode = String(v || "").trim().toUpperCase();
+      if (!key) continue;
+      if (mode !== "WHITELIST" && mode !== "BLACKLIST") continue;
+      reportRuleExactCache.set(key, mode);
+      reportModeCache.set(key, mode);
+      if (mode === "WHITELIST") reportCountCache.set(key, 0);
+      if (mode === "BLACKLIST") reportCountCache.set(key, 9999);
+      loaded++;
+    }
+    for (const [k, v] of Object.entries(nameOnly || {})){
+      const key = normalizeText(k).toLowerCase();
+      const mode = String(v || "").trim().toUpperCase();
+      if (!key) continue;
+      if (mode !== "WHITELIST" && mode !== "BLACKLIST") continue;
+      reportRuleNameCache.set(key, mode);
+      loaded++;
+    }
+
+    reportRulesLoaded = true;
+    reportRulesLoadedAt = Date.now();
+    return { ok:true, loaded, updatedAt: Number(rules?.updatedAt || 0) || 0 };
+  })().finally(()=>{
+    reportRulesLoadingPromise = null;
+  });
+
+  return reportRulesLoadingPromise;
+}
+
 function readJsonLs(key, fallback){
   try{
     const raw = localStorage.getItem(key);
@@ -685,7 +793,7 @@ function markReportedNow(key){
 }
 function getReportCount(key){
   // 後台白/黑名單優先（可覆蓋本機累計）
-  const mode = reportModeCache.get(key);
+  const mode = getCachedReportMode_(key);
   if (mode === "WHITELIST") return 0;
   if (mode === "BLACKLIST") return 9999;
 
@@ -787,11 +895,17 @@ async function fetchReportCounts(keys){
   if (!hasReportBackend()) return { ok:false, loaded:0 };
 
   const uniq = Array.from(new Set(keys)).filter(Boolean);
-  const want = uniq.filter(k =>
-    k &&
-    (!reportCountCache.has(k) || !reportModeCache.has(k)) &&
-    !reportRequestedKeys.has(k)
-  );
+
+  // ✅ v9.3：先套用已預抓的黑白名單規則，這些 key 不需要再查 counts
+  const want = [];
+  for (const k of uniq){
+    if (!k) continue;
+    const mode = primeRuleModeIntoRowCache_(k);
+    if (mode) continue;
+    if ((!reportCountCache.has(k) || !reportModeCache.has(k)) && !reportRequestedKeys.has(k)){
+      want.push(k);
+    }
+  }
 
   if (!want.length) return { ok:true, loaded:0 };
   want.forEach(k => reportRequestedKeys.add(k));
@@ -1030,6 +1144,16 @@ async function ensureDataLoaded(){
 
   dataLoadingPromise = (async ()=>{
     await loadData();
+
+    // ✅ v9.3：先預抓黑白名單規則（小資料量），避免首次查詢/前100等待 counts 才能過濾
+    if (hasReportBackend()){
+      try{
+        await fetchReportRules();
+      } catch (err){
+        console.warn("fetchReportRules failed:", err);
+      }
+    }
+
     dataLoaded = true;
 
     if (pendingWorld){
@@ -2365,19 +2489,24 @@ const selectedWorld = "__ALL__";
 
   }
 
-  // ✅ 檢舉過多自動隱藏（先抓後端黑名單，避免 F5 後重新查詢仍先看到）
+  // ✅ v9.3：先用已預抓的黑/白名單規則過濾（避免 F5 後黑名單 ID 閃現）
   const _outKeys = out.map(x => reportKey(x.world, x.name));
-  // ✅ 第一次查詢：先等後端回應（黑名單/檢舉）再顯示，避免黑名單 ID 短暫閃現
-  const needFetch = Array.isArray(_outKeys) && _outKeys.some(k => !reportCountCache.has(k) && !reportModeCache.has(k));
-  if (needFetch) showOverlay("查詢中…", "正在套用黑名單 / 檢舉過濾…");
+
+  // 若規則尚未載入（理論上 ensureDataLoaded 已載入），這裡再補一次且顯示載入中
+  const needRulesNow = hasReportBackend() && !reportRulesLoaded;
+  if (needRulesNow) showOverlay("查詢中…", "正在同步黑名單 / 白名單規則…");
   try {
-    await fetchReportCounts(_outKeys);
+    if (needRulesNow) await fetchReportRules();
   } catch(_e) {
-    console.warn("fetchReportCounts failed:", _e);
+    console.warn("fetchReportRules failed:", _e);
   } finally {
-    if (needFetch) hideOverlay();
+    if (needRulesNow) hideOverlay();
   }
-  // 後台回來後仍可再排一次小幅度更新（例如新進檢舉）
+
+  // 先把規則灌進 row cache，讓本次結果立即套用（不等 counts）
+  _outKeys.forEach(k => primeRuleModeIntoRowCache_(k));
+
+  // counts 改成背景讀取，避免每次查詢都卡住
   scheduleReportFetchAndRerender(_outKeys);
 const hiddenByReport = out.filter(x => isHiddenByReport(x.world, x.name));
   const outShown = out.filter(x => !shouldHideByReport(x.world, x.name));
@@ -2519,9 +2648,17 @@ updatedText: r.updatedText || "-"
 });
 
 
-// ✅ 檢舉過多自動隱藏（先抓後端黑名單，避免 F5 後榜單先顯示）
+// ✅ v9.3：榜單先用已預抓規則過濾（避免首次榜單等待 counts / 黑名單閃現）
 const _topKeys = top.map(x => reportKey(x.world, x.name));
-try { await fetchReportCounts(_topKeys); } catch(_e) {}
+if (hasReportBackend() && !reportRulesLoaded){
+  try{
+    setStatus("同步黑名單 / 白名單規則中…", true);
+    await fetchReportRules();
+  } catch(_e) {
+    console.warn("fetchReportRules(top) failed:", _e);
+  }
+}
+_topKeys.forEach(k => primeRuleModeIntoRowCache_(k));
 scheduleReportFetchAndRerender(_topKeys);
 const hiddenByReport = top.filter(x => isHiddenByReport(x.world, x.name));
 const shownTop = top.filter(x => !shouldHideByReport(x.world, x.name));
