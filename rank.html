@@ -1574,40 +1574,46 @@ return null;
 function parseUpdatedCell(cell){
 const rawF = (cell && cell.f != null) ? String(cell.f).trim() : "";
 const fText = rawF || "";
+
+const v = cell?.v;
+
+// ✅ 效能優先：GViz 日期欄常見 v = Date(yyyy,m,d,...)，先吃 v，避免每筆都先跑地區字串解析
+if (v instanceof Date){
+  return { text: fText || v.toLocaleString("zh-TW"), date: v };
+}
+
+const sRaw = (v == null) ? "" : String(v).trim();
+
+// gviz datetime 常見：Date(2026,1,23,16,33,28)
+if (sRaw){
+  const m = sRaw.match(/^Date\((\d+),(\d+),(\d+)(?:,(\d+),(\d+),(\d+))?\)$/);
+  if (m){
+    const yy = Number(m[1]);
+    const mm = Number(m[2]);
+    const dd = Number(m[3]);
+    const hh = Number(m[4] ?? 0);
+    const mi = Number(m[5] ?? 0);
+    const ss = Number(m[6] ?? 0);
+    const d = new Date(yy, mm, dd, hh, mi, ss);
+    return { text: fText || d.toLocaleString("zh-TW"), date: d };
+  }
+}
+
+// 再退回解析格式化字串（例如：2026/2/23 下午 4:33:28）
 if (fText){
   const dFromF = parseDateLoose(fText);
-  // ✅ f 能解析就直接用；f 不能解析時，不要立刻放棄，繼續嘗試 v（GViz 常常 f 是地區格式）
   if (dFromF){
     return { text: fText, date: dFromF };
   }
 }
 
-const v = cell?.v;
-if (v instanceof Date){
-return { text: fText || v.toLocaleString("zh-TW"), date: v };
+// 其他字串格式最後再試一次
+if (sRaw){
+  const d2 = parseDateLoose(sRaw);
+  return { text: fText || sRaw, date: d2 };
 }
 
-// gviz datetime 常見：Date(2026,1,23,16,33,28)
-const sRaw = (v == null) ? "" : String(v).trim();
-if (!sRaw){
-  return { text: fText || "-", date: null };
-}
-
-const m = sRaw.match(/^Date\((\d+),(\d+),(\d+)(?:,(\d+),(\d+),(\d+))?\)$/);
-if (m){
-const yy = Number(m[1]);
-const mm = Number(m[2]);
-const dd = Number(m[3]);
-const hh = Number(m[4] ?? 0);
-const mi = Number(m[5] ?? 0);
-const ss = Number(m[6] ?? 0);
-const d = new Date(yy, mm, dd, hh, mi, ss);
-return { text: fText || d.toLocaleString("zh-TW"), date: d };
-}
-
-// 其他字串格式再試一次
-const d2 = parseDateLoose(sRaw);
-return { text: fText || sRaw, date: d2 };
+return { text: fText || "-", date: null };
 }
 
 function gvizUrl(){
@@ -1856,7 +1862,7 @@ renderAroundTable();
 /* ========================= */
 
 async function loadData(){
-showOverlay("資料載入中…", "正在抓取最新資料，請稍候。");
+showOverlay("資料載入中…", "正在抓取與整理 10 萬筆以上資料，請稍候…");
 setStatus("載入資料中…");
 
 const res = await fetch(gvizUrl(), { cache: "no-store" });
@@ -2412,9 +2418,26 @@ setStatus("複製失敗（瀏覽器不允許剪貼簿）。你可以手動複製
 /* ====== 事件（Lazy Load：首次操作才載入資料） ====== */
 
 async function activateTab(tab){
+  const needsBusyOverlay = !!dataLoaded; // 首次載入由 loadData() 自己顯示 overlay
   try{
+    if (needsBusyOverlay){
+      const title = (tab === "result") ? "查詢中…" : "載入排行榜中…";
+      const hint = (tab === "result")
+        ? "正在整理結果、套用黑名單與更新時間過濾…"
+        : "正在整理排行榜資料…";
+      showOverlay(title, hint);
+      setProgress(progressValue, title);
+      // 讓 overlay 先畫出來，再開始重工作
+      await new Promise(r=>setTimeout(r, 0));
+    }
+
     await ensureDataLoaded();
     setActiveTab(tab);
+
+    if (needsBusyOverlay){
+      finishLoadingProgress(true);
+      setTimeout(()=>hideOverlay(), 180);
+    }
   } catch (err){
     console.error(err);
     finishLoadingProgress(false);
