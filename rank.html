@@ -2616,9 +2616,9 @@ async function activateTab(tab){
     if (needsBusyOverlay){
       const title = (tab === "result") ? "查詢中…" : "載入排行榜中…";
       const hint = (tab === "result")
-      setStatus(title, true);
         ? "正在整理結果、套用黑名單與更新時間過濾…"
         : "正在整理排行榜資料…";
+      setStatus(title, true);
       showOverlay(title, hint);
       setProgress(progressValue, title);
       // 讓 overlay 先畫出來，再開始重工作
