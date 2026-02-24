@@ -1895,9 +1895,13 @@ tmpRows = tmpRows.filter(r => {
 });
 const removedNameCount = beforeNameCount - tmpRows.length;
 
-// ✅ 過濾更新時間 2026 年以前的資料（含無更新時間）
+// ✅ 只看 updated 欄位：過濾更新時間 2026 年以前的資料（含無更新時間）
+// ⚠️ 不使用 date_create 做過濾
 const beforeUpdatedCount = tmpRows.length;
-tmpRows = tmpRows.filter(r => (r.updatedDate instanceof Date) && !Number.isNaN(r.updatedDate.getTime()) && r.updatedDate.getFullYear() >= 2026);
+tmpRows = tmpRows.filter(r => {
+  const d = r && r.updatedDate;
+  return (d instanceof Date) && !Number.isNaN(d.getTime()) && d.getFullYear() >= 2026;
+});
 const removedOldUpdatedCount = beforeUpdatedCount - tmpRows.length;
 
 // ✅ 重新連號 rowIdx（避免 rank map 用舊 idx）
