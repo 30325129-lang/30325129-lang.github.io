@@ -1078,6 +1078,7 @@ let jobRankCache = new Map();   // `${worldKey}||${job}` -> {expJobRank,bpJobRan
 let topPrewarmToken = 0;        // 用來取消舊的背景任務
 let topPrewarmRunning = false;
 let topPrewarmDoneAt = null;
+let topPrewarmTimer = null;     // v9.2：延後啟動背景預熱，避免和使用者操作搶主執行緒
 
 let loadedAt = null;
 let latestUpdated = null;
@@ -2066,6 +2067,7 @@ jobRankCache.clear();
 topPrewarmToken++;
 topPrewarmRunning = false;
 topPrewarmDoneAt = null;
+if (topPrewarmTimer) { try { clearTimeout(topPrewarmTimer); } catch(_e) {} topPrewarmTimer = null; }
 
 latestUpdated = null;
 for (const r of rows){
@@ -2116,12 +2118,20 @@ scheduleTopCachePrewarm();
 /** ✅ v9：背景預熱排行榜快取（不阻塞 UI） */
 function scheduleTopCachePrewarm(){
   const myToken = ++topPrewarmToken;
-  // 讓頁面先可操作，再背景慢慢建
-  setTimeout(() => {
+
+  // v9.2：延後啟動，避免使用者剛載入/剛切頁就被背景預熱卡住
+  if (topPrewarmTimer) {
+    try { clearTimeout(topPrewarmTimer); } catch(_e) {}
+  }
+
+  topPrewarmTimer = setTimeout(() => {
+    topPrewarmTimer = null;
+    // token 變了表示期間有新互動（查詢/切頁/重載），直接放棄這次預熱
+    if (myToken !== topPrewarmToken) return;
     prewarmTopCaches_(myToken).catch(err => {
       console.warn("Top cache prewarm failed:", err);
     });
-  }, 0);
+  }, 1200);
 }
 
 async function prewarmTopCaches_(token){
@@ -2130,24 +2140,12 @@ async function prewarmTopCaches_(token){
 
   topPrewarmRunning = true;
   try{
-    // 先預熱「全部伺服器」排行榜（切 top100 最常用）
+    // v9.2：不再背景預熱 __ALL__（全服 Top100）避免 buildRanks("__ALL__") 長時間卡住點擊事件
+    // 讓全服榜單在使用者第一次點擊時建立，並搭配 overlay / 載入提示呈現。
     if (token !== topPrewarmToken) return;
-    const packAll = buildRanks("__ALL__");
     await new Promise(r => setTimeout(r, 0));
 
-    // 順手把全服前100（經驗/戰力）常見職業排名快取一起熱起來
-    const jobsWarmAll = new Set();
-    (packAll.expSorted || []).slice(0, 100).forEach(r => jobsWarmAll.add(r.job || "-"));
-    (packAll.bpSorted  || []).slice(0, 100).forEach(r => jobsWarmAll.add(r.job || "-"));
-    let _jAll = 0;
-    for (const job of jobsWarmAll){
-      if (token !== topPrewarmToken) return;
-      buildJobRanks("__ALL__", job);
-      _jAll++;
-      if ((_jAll % 4) === 0) await new Promise(r => setTimeout(r, 0));
-    }
-
-    // 再分批預熱各伺服器排行榜（避免一口氣卡住）
+// 再分批預熱各伺服器排行榜（避免一口氣卡住）
     const ws = (worlds || []).slice();
     const CHUNK = 1; // v9.1：每批只處理 1 個世界，避免卡住使用者點擊
     for (let i = 0; i < ws.length; i += CHUNK){
@@ -2574,7 +2572,42 @@ reportButtonHtml(x.name, x.world, x.job) + adminButtonsHtml(x.name, x.world, x.j
 }
 }
 
-function setActiveTab(tab){
+
+function renderLoadingSkeletonForTop(metric){
+  const title = (metric === "bp") ? "前100名（戰力）" : "前100名（經驗值）";
+  const metricLabel = (metric === "bp") ? "戰力值" : "經驗值%";
+  const rowsHtml = Array.from({length: 10}).map((_, i)=>`
+    <tr>
+      <td><span class="muted">#${i+1}</span></td>
+      <td><span class="muted">載入中…</span></td>
+      <td><span class="muted">-</span></td>
+      <td><span class="muted">-</span></td>
+      <td><span class="muted">-</span></td>
+      <td><span class="muted">-</span></td>
+      <td><span class="muted">-</span></td>
+      <td><span class="muted">-</span></td>
+      <td><span class="muted">-</span></td>
+    </tr>
+  `).join("");
+
+  contentEl.innerHTML = `
+    <div class="card" style="margin-bottom:10px;">
+      <div class="muted">${title} 載入中…（首次建立排行榜快取可能較久）</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>排名</th><th>name</th><th>world</th><th>職業</th><th>等級</th><th>${metricLabel}</th><th>職業排名</th><th>更新時間</th><th>檢舉</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function setActiveTab(tab){
 activeTab = tab;
 
 [tabResult, tabTopExp, tabTopBp].forEach(b=>b.classList.remove("active"));
@@ -2582,9 +2615,27 @@ if (tab==="result") tabResult.classList.add("active");
 if (tab==="topExp") tabTopExp.classList.add("active");
 if (tab==="topBp") tabTopBp.classList.add("active");
 
-if (tab==="result") runSearch();
-if (tab==="topExp") renderTop("exp");
-if (tab==="topBp") renderTop("bp");
+if (tab==="result") {
+  await runSearch();
+}
+if (tab==="topExp") {
+  const wk = worldKeyForTop();
+  if (!rankCache.has(wk)) {
+    setStatus("載入排行榜中（首次建立此榜單快取）…", true);
+    renderLoadingSkeletonForTop("exp");
+    await new Promise(r => setTimeout(r, 0)); // 讓骨架與文字先畫出來
+  }
+  renderTop("exp");
+}
+if (tab==="topBp") {
+  const wk = worldKeyForTop();
+  if (!rankCache.has(wk)) {
+    setStatus("載入排行榜中（首次建立此榜單快取）…", true);
+    renderLoadingSkeletonForTop("bp");
+    await new Promise(r => setTimeout(r, 0)); // 讓骨架與文字先畫出來
+  }
+  renderTop("bp");
+}
 }
 
 function copyShareLink(){
@@ -2610,6 +2661,10 @@ async function activateTab(tab){
   // ✅ 使用者互動優先：先取消背景預熱，避免點擊要等很久才有反應
   topPrewarmToken++;
   topPrewarmRunning = false;
+  if (topPrewarmTimer) {
+    try { clearTimeout(topPrewarmTimer); } catch(_e) {}
+    topPrewarmTimer = null;
+  }
 
   const needsBusyOverlay = !!dataLoaded; // 首次載入由 loadData() 自己顯示 overlay
   try{
@@ -2626,7 +2681,7 @@ async function activateTab(tab){
     }
 
     await ensureDataLoaded();
-    setActiveTab(tab);
+    await setActiveTab(tab);
 
     if (needsBusyOverlay){
       finishLoadingProgress(true);
