@@ -953,7 +953,11 @@ const aroundMeta = $("aroundMeta");
 const aroundHint = $("aroundHint");
 
 let rows = [];              // {rowIdx, name, world, job, exp, bp, updatedText, updatedDate}
-let nameExactIndex = new Map(); // key(name) -> row[]（加速角色查詢）
+let nameExactIndex = new Map();   // key(name) -> row[]（加速角色查詢）
+let nameWorldIndex = new Map();   // key("world||name") -> row[]（預留：指定伺服器查詢）
+let worldRowsIndex = new Map();   // key(world) -> row[]（加速排行榜/附近榜）
+let jobRowsGlobalIndex = new Map(); // key(job) -> row[]（加速全服同職業排名）
+let worldJobRowsIndex = new Map();  // key("world||job") -> row[]（加速單服同職業排名）
 let dataLoaded = false;
 let dataLoadingPromise = null;
 let pendingWorld = null;
@@ -976,13 +980,48 @@ function applyDataLoadedUi(){
 
 function rebuildSearchIndexes(){
   const byName = new Map();
+  const byWorldName = new Map();
+  const byWorld = new Map();
+  const byJobGlobal = new Map();
+  const byWorldJob = new Map();
+
   for (const r of rows){
-    if (!r || !r.name) continue;
-    let arr = byName.get(r.name);
-    if (!arr){ arr = []; byName.set(r.name, arr); }
-    arr.push(r);
+    if (!r || !r.name || !r.world) continue;
+
+    // name -> rows[]
+    let arrName = byName.get(r.name);
+    if (!arrName){ arrName = []; byName.set(r.name, arrName); }
+    arrName.push(r);
+
+    // world||name -> rows[]
+    const wnKey = `${r.world}||${r.name}`;
+    let arrWN = byWorldName.get(wnKey);
+    if (!arrWN){ arrWN = []; byWorldName.set(wnKey, arrWN); }
+    arrWN.push(r);
+
+    // world -> rows[]
+    let arrWorld = byWorld.get(r.world);
+    if (!arrWorld){ arrWorld = []; byWorld.set(r.world, arrWorld); }
+    arrWorld.push(r);
+
+    // job(global) -> rows[]
+    const jobKey = r.job || "-";
+    let arrJobG = byJobGlobal.get(jobKey);
+    if (!arrJobG){ arrJobG = []; byJobGlobal.set(jobKey, arrJobG); }
+    arrJobG.push(r);
+
+    // world||job -> rows[]
+    const wjKey = `${r.world}||${jobKey}`;
+    let arrWJ = byWorldJob.get(wjKey);
+    if (!arrWJ){ arrWJ = []; byWorldJob.set(wjKey, arrWJ); }
+    arrWJ.push(r);
   }
+
   nameExactIndex = byName;
+  nameWorldIndex = byWorldName;
+  worldRowsIndex = byWorld;
+  jobRowsGlobalIndex = byJobGlobal;
+  worldJobRowsIndex = byWorldJob;
 }
 
 async function ensureDataLoaded(){
@@ -1874,7 +1913,7 @@ renderAroundTable();
 /* ========================= */
 
 async function loadData(){
-showOverlay("資料載入中…", "正在抓取與整理 10 萬筆以上資料，請稍候…");
+showOverlay("資料載入中…", "正在抓取、過濾並建立索引（v8 加速版），請稍候…");
 setStatus("載入資料中…");
 
 const res = await fetch(gvizUrl(), { cache: "no-store" });
@@ -1907,17 +1946,45 @@ throw new Error("找不到欄位：" + missing.join(", ") + "（請確認標題�
 
 setProgress(progressValue, "整理資料中…");
 
-// ✅ 先做初步轉換
-let tmpRows = table.rows.map((r, idx) => {
-const c = r.c || [];
-const name  = normalizeText(c[iName]?.v);
-const world = normalizeText(c[iWorld]?.v);
-const job   = normalizeText(c[iJob]?.v) || "-";
-const exp   = toNumber(c[iExp]?.v);
-const bp    = toNumber(c[iBp]?.v);
-const up    = parseUpdatedCell(c[iUpdated]);
-return { rowIdx: idx, name, world, job, exp, bp, updatedText: up.text || "-", updatedDate: up.date || null };
-}).filter(x => x.name && x.world);
+// ✅ 先做初步轉換（v8：分批解析，避免 10 萬筆時卡住 UI）
+let tmpRows = [];
+const rawRows = table.rows || [];
+const totalRaw = rawRows.length;
+const CHUNK_SIZE = 4000;
+
+for (let start = 0; start < totalRaw; start += CHUNK_SIZE){
+  const end = Math.min(start + CHUNK_SIZE, totalRaw);
+
+  for (let idx = start; idx < end; idx++){
+    const r = rawRows[idx];
+    const c = (r && r.c) || [];
+    const name  = normalizeText(c[iName]?.v);
+    const world = normalizeText(c[iWorld]?.v);
+    if (!name || !world) continue;
+
+    const job   = normalizeText(c[iJob]?.v) || "-";
+    const exp   = toNumber(c[iExp]?.v);
+    const bp    = toNumber(c[iBp]?.v);
+    const up    = parseUpdatedCell(c[iUpdated]);
+
+    tmpRows.push({
+      rowIdx: idx,
+      name,
+      world,
+      job,
+      exp,
+      bp,
+      updatedText: up.text || "-",
+      updatedDate: up.date || null
+    });
+  }
+
+  const pct = Math.max(5, Math.min(75, Math.round((end / Math.max(totalRaw,1)) * 75)));
+  setProgress(pct, `整理資料中… ${end.toLocaleString("zh-TW")} / ${totalRaw.toLocaleString("zh-TW")}`);
+
+  // 每批讓出事件迴圈，避免畫面無回應
+  await new Promise(r => setTimeout(r, 0));
+}
 
 // ✅ 過濾掉戰鬥力 >= 100 億 的異常資料（整筆排除）
 const beforeCount = tmpRows.length;
@@ -1986,6 +2053,7 @@ if (removedOldUpdatedCount > 0){
 console.warn(`已過濾舊更新時間資料：${removedOldUpdatedCount} 筆（更新時間 < 2026）`);
 }
 
+setProgress(85, "建立查詢索引中…");
 rankCache.clear();
 jobRankCache.clear();
 
@@ -2033,7 +2101,7 @@ setStatus("載入完成。", true);
 function buildRanks(worldKey){
 if (rankCache.has(worldKey)) return rankCache.get(worldKey);
 
-const group = (worldKey === "__ALL__") ? rows : rows.filter(r => r.world === worldKey);
+const group = (worldKey === "__ALL__") ? rows : (worldRowsIndex.get(worldKey) || []);
 
 const expSorted = group
 .filter(r => r.exp !== null)
@@ -2057,8 +2125,10 @@ function buildJobRanks(worldKey, job){
 const key = `${worldKey}||${job}`;
 if (jobRankCache.has(key)) return jobRankCache.get(key);
 
-const groupAll = (worldKey === "__ALL__") ? rows : rows.filter(r => r.world === worldKey);
-const group = groupAll.filter(r => r.job === job);
+const jobKey = job || "-";
+const group = (worldKey === "__ALL__")
+  ? (jobRowsGlobalIndex.get(jobKey) || [])
+  : (worldJobRowsIndex.get(`${worldKey}||${jobKey}`) || []);
 
 const expSorted = group
 .filter(r => r.exp !== null)
@@ -2112,7 +2182,7 @@ const selectedWorld = "__ALL__";
   let autoAllWorld = false;
 
   if (selectedWorld !== "__ALL__"){
-    candidates = allSameName.filter(r => r.world === selectedWorld);
+    candidates = (nameWorldIndex.get(`${selectedWorld}||${targetName}`) || []);
 
     // ✅ 修正：若在預設伺服器找不到，但其他伺服器有同名角色
     if (!candidates.length && allSameName.length){
