@@ -394,6 +394,10 @@ const SHEET_NAME = "character_data";
 /** ✅ 過濾異常戰鬥力：>= 100 億 直接排除（避免榜單被污染） */
 const BP_EXCLUDE_MIN = 10_000_000_000;
 
+/** ✅ 過濾舊資料：更新時間早於 2026 的整筆排除 */
+const UPDATED_MIN_YEAR = 2026;
+const UPDATED_MIN_DATE = new Date("2026-01-01T00:00:00+08:00");
+
 // ✅ 過濾指定名稱（宣傳/測試資料）
 // - 你可在這裡持續新增想排除的名字或關鍵字
 const NAME_EXCLUDE = new Set([
@@ -407,7 +411,9 @@ const NAME_EXCLUDE = new Set([
   "想跟我一樣強請搜D-a*n,c-e*G,P-T",
   "想跟我一樣強請搜\"用AI生成式腳本幫你練功 冰楓\"",
   "想跟我一樣強請搜用AI生成式腳本幫你練功 冰楓",
-  "想跟我一樣強請搜用AI生成式腳本幫你練功冰楓"
+  "想跟我一樣強請搜用AI生成式腳本幫你練功冰楓",
+  "想跟我一樣強請找TPGecnaD(反過來拼)",
+  "想跟我一樣強請找 TPGecnaD (反過來拼)"
 ]);
 // 只要名字符合其中任一條，就會整筆排除
 const NAME_EXCLUDE_PATTERNS = [
@@ -417,7 +423,10 @@ const NAME_EXCLUDE_PATTERNS = [
   /Dance\s*GPT/i,
   /\[?\s*想跟我一樣強請搜\s*D\s*a\s*n\s*c\s*e\s*G\s*P\s*T\s*\]?/i,
   /想(?:變得)?跟我一樣.*請\s*(?:搜|google)/i,
-  /用\s*A\s*I.*腳本.*練功/i
+  /用\s*A\s*I.*腳本.*練功/i,
+  /TPGecnaD/i,
+  /反過來拼/i,
+  /想(?:變得)?跟我一樣.*(?:請搜|請找|搜尋|google|找)/i
 ];
 
 
@@ -1848,6 +1857,18 @@ const up    = parseUpdatedCell(c[iUpdated]);
 return { rowIdx: idx, name, world, job, exp, bp, updatedText: up.text || "-", updatedDate: up.date || null };
 }).filter(x => x.name && x.world);
 
+// ✅ 過濾掉更新時間早於 2026 的舊資料（整筆排除）
+const beforeOldDateCount = tmpRows.length;
+tmpRows = tmpRows.filter(r => {
+  if (!r.updatedDate) return false;
+  try {
+    return r.updatedDate >= UPDATED_MIN_DATE && r.updatedDate.getFullYear() >= UPDATED_MIN_YEAR;
+  } catch {
+    return false;
+  }
+});
+const removedOldDateCount = beforeOldDateCount - tmpRows.length;
+
 // ✅ 過濾掉戰鬥力 >= 100 億 的異常資料（整筆排除）
 const beforeCount = tmpRows.length;
 tmpRows = tmpRows.filter(r => !(r.bp !== null && r.bp >= BP_EXCLUDE_MIN));
@@ -1870,9 +1891,16 @@ tmpRows = tmpRows.filter(r => {
   if (nNorm.includes("dancegpt")) return false;
   const nNormNoIL = nNorm.replace(/[il1]/g,"");
   if (nNormNoIL.includes("dancegpt")) return false;
+  // ✅ 反向字串變形（TPGecnaD = DanceGPT 反過來）
+  if (nNorm.includes("tpgecnad")) return false;
+  const nNormNoIL2 = nNorm.replace(/[il1]/g,"");
+  if (nNormNoIL2.includes("tpgecnad")) return false;
   if ((nNorm.includes("想跟我一樣") || nNorm.includes("想變得跟我一樣")) && nNorm.includes("google")) return false;
   if (nNorm.includes("想跟我一樣強請搜") || nNorm.includes("想跟我一樣請搜") || nNorm.includes("想變得跟我一樣強嗎搜尋") || nNorm.includes("想跟我一樣強請google") || nNorm.includes("想跟我一樣請google") || nNorm.includes("想變得跟我一樣強嗎google")) return false;
   if (nNorm.includes("用ai生成式腳本幫你練功") || (nNorm.includes("ai") && nNorm.includes("腳本") && nNorm.includes("練功"))) return false;
+  // ✅ 新變形：用「想跟我一樣」+ 找/反過來拼 來導流
+  if ((nNorm.includes("想跟我一樣") || nNorm.includes("想變得跟我一樣")) && (nNorm.includes("找") || nNorm.includes("反過來拼"))) return false;
+  if (nNorm.includes("反過來拼")) return false;
 
   // ✅ 精準字串黑名單
   if (NAME_EXCLUDE.has(n)) return false;
@@ -1891,6 +1919,9 @@ const removedNameCount = beforeNameCount - tmpRows.length;
 rows = tmpRows.map((r, newIdx) => ({ ...r, rowIdx: newIdx }));
 
 // ✅ 如果有移除，印 log（不影響 UI）
+if (removedOldDateCount > 0){
+console.warn(`已過濾舊更新時間資料：${removedOldDateCount} 筆（updated < ${UPDATED_MIN_YEAR}-01-01）`);
+}
 if (removedCount > 0){
 console.warn(`已過濾異常戰鬥力資料：${removedCount} 筆（bp >= ${BP_EXCLUDE_MIN}）`);
 }
