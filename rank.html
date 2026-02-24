@@ -383,6 +383,8 @@ button.modal-close{margin-left:auto;background:#fff;color:#111827;border-color:#
 </script>
 
 <script>
+(()=>{
+  <script>
 
 /** ====== 你只需要改這兩個 ====== */
 const SHEET_ID = "1GCs7Dovg7DJkENlyTNqn_gkFc6ARSdinBrNoZUvCM0Y";
@@ -588,15 +590,11 @@ async function adminOp(op, key, label){
     reportCountCache.set(key, 0);
     clearLocalReportForKey(key);
     setStatus(`已加入白名單：${label}（之後不會再因檢舉自動隱藏）`, true);
-    reportRequestedKeys.delete(key);
-    scheduleReportFetchAndRerender([key]); // 強制回讀後台，避免只有本機快取生效
   } else if (op === "blacklist"){
     reportModeCache.set(key, "BLACKLIST");
     reportCountCache.set(key, 9999);
     clearLocalReportForKey(key);
     setStatus(`已強制黑名單：${label}`, true);
-    reportRequestedKeys.delete(key);
-    scheduleReportFetchAndRerender([key]); // 強制回讀後台，避免只有本機快取生效
   } else if (op === "clear"){
     reportModeCache.delete(key);
     reportCountCache.delete(key);
@@ -809,20 +807,19 @@ async function fetchReportCounts(keys){
       js = await jsonpRequest(url, 9000);
     } catch (err2){
       console.warn("檢舉統計讀取失敗：", err2);
-      // 失敗要解除鎖定，避免這批 key 之後都不再重試
-      want.forEach(k => reportRequestedKeys.delete(k));
+      want.forEach(k => reportRequestedKeys.delete(k)); // 失敗可重試
       return { ok:false, loaded:0 };
     }
   }
 
-  if (!js || js.ok === false){
-    console.warn("檢舉統計讀取失敗（後端回錯誤）：", js?.error || js);
-    want.forEach(k => reportRequestedKeys.delete(k));
+  if (js && js.ok === false){
+    console.warn("檢舉統計讀取失敗（後端回傳錯誤）：", js.error || js);
+    want.forEach(k => reportRequestedKeys.delete(k)); // 失敗可重試
     return { ok:false, loaded:0 };
   }
 
-  const counts = (js && typeof js === "object" && js.counts) ? js.counts : (js || {});
-  const modes = (js && typeof js === "object" && js.modes) ? js.modes : {};
+  const counts = js?.counts || js || {};
+  const modes = js?.modes || {};
 
   let loaded = 0;
   for (const k of want){
@@ -1992,7 +1989,7 @@ jobRankCache.set(key, pack);
 return pack;
 }
 
-function runSearch(){
+async function runSearch(){
   activeTab = "result";
   hideAroundControls();
 
@@ -2125,7 +2122,14 @@ const selectedWorld = "__ALL__";
 
   // ✅ 檢舉過多自動隱藏（多人累計，若後台尚未設定則只做本機隱藏）
   const _outKeys = out.map(x => reportKey(x.world, x.name));
-  scheduleReportFetchAndRerender(_outKeys);
+  // ✅ 查詢結果先同步抓一次後台檢舉/白黑名單，再決定是否隱藏（避免 F5 後第一次查詢漏過濾）
+  if (hasReportBackend()) {
+    try {
+      await fetchReportCounts(_outKeys);
+    } catch (e) {
+      console.warn("查詢結果讀取檢舉統計失敗：", e);
+    }
+  }
   const hiddenByReport = out.filter(x => isHiddenByReport(x.world, x.name));
   const outShown = out.filter(x => !shouldHideByReport(x.world, x.name));
   if (hiddenByReport.length){
