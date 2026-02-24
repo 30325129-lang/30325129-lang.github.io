@@ -953,6 +953,7 @@ const aroundMeta = $("aroundMeta");
 const aroundHint = $("aroundHint");
 
 let rows = [];              // {rowIdx, name, world, job, exp, bp, updatedText, updatedDate}
+let nameExactIndex = new Map(); // key(name) -> row[]（加速角色查詢）
 let dataLoaded = false;
 let dataLoadingPromise = null;
 let pendingWorld = null;
@@ -971,6 +972,17 @@ function applyDataLoadedUi(){
   tabAroundBp.disabled = !ready;
   btnUp50.disabled = !ready;
   btnDown50.disabled = !ready;
+}
+
+function rebuildSearchIndexes(){
+  const byName = new Map();
+  for (const r of rows){
+    if (!r || !r.name) continue;
+    let arr = byName.get(r.name);
+    if (!arr){ arr = []; byName.set(r.name, arr); }
+    arr.push(r);
+  }
+  nameExactIndex = byName;
 }
 
 async function ensureDataLoaded(){
@@ -1961,6 +1973,7 @@ const removedOldUpdatedCount = beforeUpdatedCount - tmpRows.length;
 
 // ✅ 重新連號 rowIdx（避免 rank map 用舊 idx）
 rows = tmpRows.map((r, newIdx) => ({ ...r, rowIdx: newIdx }));
+rebuildSearchIndexes();
 
 // ✅ 如果有移除，印 log（不影響 UI）
 if (removedCount > 0){
@@ -2091,7 +2104,7 @@ const selectedWorld = "__ALL__";
   addSearchHistory(targetName, selectedWorld, jobSelect.value || "__ALL_JOB__");
 
   // 先找出所有同名（跨伺服器）
-  const allSameName = rows.filter(r => r.name === targetName);
+  const allSameName = nameExactIndex.get(targetName) || [];
 
   // 先依目前下拉篩選（可能是預設=挑戰者）
   let candidates = allSameName;
