@@ -1073,6 +1073,12 @@ async function ensureDataLoaded(){
 let worlds = [];
 let rankCache = new Map();      // key(world or "__ALL__") -> {expRank,bpRank,expSorted,bpSorted}
 let jobRankCache = new Map();   // `${worldKey}||${job}` -> {expJobRank,bpJobRank}
+
+// ✅ v9：背景預熱排行榜快取（讓切換前100榜單更快）
+let topPrewarmToken = 0;        // 用來取消舊的背景任務
+let topPrewarmRunning = false;
+let topPrewarmDoneAt = null;
+
 let loadedAt = null;
 let latestUpdated = null;
 let activeTab = "result";
@@ -2056,6 +2062,10 @@ console.warn(`已過濾舊更新時間資料：${removedOldUpdatedCount} 筆（�
 setProgress(85, "建立查詢索引中…");
 rankCache.clear();
 jobRankCache.clear();
+// ✅ v9：取消舊的背景預熱（資料已重新載入）
+topPrewarmToken++;
+topPrewarmRunning = false;
+topPrewarmDoneAt = null;
 
 latestUpdated = null;
 for (const r of rows){
@@ -2094,10 +2104,82 @@ metaInfo.textContent =
 `資料筆數：${rows.length.toLocaleString()}　|　資料最新更新：${latestText}　|　載入時間：${loadedAt.toLocaleString()}`;
 
 setStatus("載入完成。", true);
+
+// ✅ v9：背景預熱前100榜單會用到的排行榜快取（不阻塞當前畫面）
+scheduleTopCachePrewarm();
+
   // ✅ 只負責載入與建表；是否自動查詢由 init() 決定
 }
 
 /** ✅ 排名包：worldKey="__ALL__" -> 全伺服器合併排名（並列同名次） */
+
+/** ✅ v9：背景預熱排行榜快取（不阻塞 UI） */
+function scheduleTopCachePrewarm(){
+  const myToken = ++topPrewarmToken;
+  // 讓頁面先可操作，再背景慢慢建
+  setTimeout(() => {
+    prewarmTopCaches_(myToken).catch(err => {
+      console.warn("Top cache prewarm failed:", err);
+    });
+  }, 0);
+}
+
+async function prewarmTopCaches_(token){
+  if (topPrewarmRunning) return;
+  if (!Array.isArray(rows) || rows.length === 0) return;
+
+  topPrewarmRunning = true;
+  try{
+    // 先預熱「全部伺服器」排行榜（切 top100 最常用）
+    if (token !== topPrewarmToken) return;
+    const packAll = buildRanks("__ALL__");
+
+    // 順手把全服前100（經驗/戰力）常見職業排名快取一起熱起來
+    const jobsWarmAll = new Set();
+    (packAll.expSorted || []).slice(0, 100).forEach(r => jobsWarmAll.add(r.job || "-"));
+    (packAll.bpSorted  || []).slice(0, 100).forEach(r => jobsWarmAll.add(r.job || "-"));
+    for (const job of jobsWarmAll){
+      if (token !== topPrewarmToken) return;
+      buildJobRanks("__ALL__", job);
+    }
+
+    // 再分批預熱各伺服器排行榜（避免一口氣卡住）
+    const ws = (worlds || []).slice();
+    const CHUNK = 6; // 每批處理幾個世界（折衷）
+    for (let i = 0; i < ws.length; i += CHUNK){
+      if (token !== topPrewarmToken) return;
+
+      const part = ws.slice(i, i + CHUNK);
+      for (const w of part){
+        const pack = buildRanks(w);
+
+        // 只預熱該世界前100涉及到的職業排名（避免全部職業全世界都建太重）
+        const jobsWarm = new Set();
+        (pack.expSorted || []).slice(0, 100).forEach(r => jobsWarm.add(r.job || "-"));
+        (pack.bpSorted  || []).slice(0, 100).forEach(r => jobsWarm.add(r.job || "-"));
+        for (const job of jobsWarm){
+          if (token !== topPrewarmToken) return;
+          buildJobRanks(w, job);
+        }
+      }
+
+      // 讓出事件迴圈，避免 UI 卡頓
+      await new Promise(r => setTimeout(r, 0));
+    }
+
+    if (token !== topPrewarmToken) return;
+    topPrewarmDoneAt = Date.now();
+    // 不蓋掉使用者正在看的狀態文字，只在 console 留痕
+    console.log("[v9] top caches prewarmed", {
+      rankCache: rankCache.size,
+      jobRankCache: jobRankCache.size,
+      worlds: ws.length
+    });
+  } finally {
+    topPrewarmRunning = false;
+  }
+}
+
 function buildRanks(worldKey){
 if (rankCache.has(worldKey)) return rankCache.get(worldKey);
 
@@ -2371,6 +2453,9 @@ const selectedWorld = "__ALL__";
 async function renderTop(metric){
 hideAroundControls();
 activeTab = (metric === "exp") ? "topExp" : "topBp";
+if (!topPrewarmDoneAt && rows.length > 20000){
+  setStatus("排行榜資料整理中（v9 背景預熱中）…", true);
+}
 
 const worldKey = worldKeyForTop();
 const jobFilter = jobSelect.value || "__ALL_JOB__";
