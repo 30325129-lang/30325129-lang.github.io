@@ -2362,10 +2362,19 @@ const selectedWorld = "__ALL__";
 
   // ✅ 檢舉過多自動隱藏（先抓後端黑名單，避免 F5 後重新查詢仍先看到）
   const _outKeys = out.map(x => reportKey(x.world, x.name));
-  // ✅ 不要阻塞查詢畫面：先用本機快取渲染，後台檢舉資料回來再自動重繪
-  try { void fetchReportCounts(_outKeys); } catch(_e) {}
+  // ✅ 第一次查詢：先等後端回應（黑名單/檢舉）再顯示，避免黑名單 ID 短暫閃現
+  const needFetch = Array.isArray(_outKeys) && _outKeys.some(k => !reportCountCache.has(k) && !reportModeCache.has(k));
+  if (needFetch) showOverlay("查詢中…", "正在套用黑名單 / 檢舉過濾…");
+  try {
+    await fetchReportCounts(_outKeys);
+  } catch(_e) {
+    console.warn("fetchReportCounts failed:", _e);
+  } finally {
+    if (needFetch) hideOverlay();
+  }
+  // 後台回來後仍可再排一次小幅度更新（例如新進檢舉）
   scheduleReportFetchAndRerender(_outKeys);
-  const hiddenByReport = out.filter(x => isHiddenByReport(x.world, x.name));
+const hiddenByReport = out.filter(x => isHiddenByReport(x.world, x.name));
   const outShown = out.filter(x => !shouldHideByReport(x.world, x.name));
   if (hiddenByReport.length){
     // 只追加提示，不改你原本的查詢邏輯
