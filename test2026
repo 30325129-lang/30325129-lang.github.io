@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>楓之谷TW 角色查詢（含裝備/重點能力值）</title>
+  <style>
+    :root { --bg:#0b0e14; --card:#121826; --muted:#93a4c7; --text:#e7eeff; --line:#22304b; --btn:#2b3a5c; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans TC", sans-serif; }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 18px; }
+    h1 { margin: 0 0 12px; font-size: 20px; }
+    .row { display:flex; gap:12px; flex-wrap: wrap; align-items: center; }
+    input, select { background:#0f1524; border:1px solid var(--line); color:var(--text); padding:10px 12px; border-radius:10px; font-size:14px; }
+    input[type="text"]{ min-width: 240px; }
+    button { background: var(--btn); color:var(--text); border:1px solid var(--line); padding:10px 12px; border-radius:10px; font-size:14px; cursor:pointer; }
+    button:disabled { opacity:.5; cursor:not-allowed; }
+    .hint { color: var(--muted); font-size: 12px; margin-top: 6px; }
+    .grid { display:grid; grid-template-columns: 1.2fr 1fr; gap: 12px; margin-top: 12px; }
+    @media (max-width: 980px){ .grid { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border:1px solid var(--line); border-radius: 14px; padding: 12px; }
+    .card h2 { margin:0 0 10px; font-size: 15px; color:#cfe0ff; }
+    .kvs { display:grid; grid-template-columns: 140px 1fr; row-gap: 6px; column-gap: 10px; font-size: 13px;}
+    .k { color: var(--muted); }
+    .pillRow { display:flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .pill { border:1px solid var(--line); background:#0f1524; border-radius: 999px; padding: 6px 10px; font-size: 12px; }
+    .pill b { color:#fff; }
+    .avatar { width: 84px; height: 84px; border-radius: 14px; border:1px solid var(--line); background:#0f1524; object-fit: cover; }
+    .topInfo { display:flex; gap: 12px; align-items: center; }
+    .muted { color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border-bottom:1px solid var(--line); padding: 8px; vertical-align: top; }
+    th { text-align: left; color:#cfe0ff; font-weight: 600; position: sticky; top:0; background: var(--card); }
+    .tools { display:flex; gap:10px; flex-wrap: wrap; align-items:center; margin: 10px 0 0; }
+    details { border:1px solid var(--line); border-radius: 12px; padding: 8px 10px; background:#0f1524; }
+    summary { cursor:pointer; color:#cfe0ff; }
+    pre { white-space: pre-wrap; word-break: break-word; background:#0f1524; border:1px solid var(--line); padding: 10px; border-radius: 12px; overflow:auto; font-size: 12px; }
+    .err { color:#ff8899; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>楓之谷TW 角色查詢（BOSS傷 / 無視 / 爆傷 + 裝備）</h1>
+
+    <div class="row">
+      <input id="name" type="text" placeholder="輸入角色暱稱（例如 Ezra絕）" />
+      <input id="date" type="date" />
+      <select id="mode">
+        <option value="full" selected>完整（含裝備/現金/符文）</option>
+        <option value="fast">快速（只抓基本/名聲/能力值）</option>
+      </select>
+      <button id="btnQuery">查詢</button>
+      <button id="btnCsvChar" disabled>下載角色 CSV</button>
+      <button id="btnCsvEq" disabled>下載裝備 CSV</button>
+    </div>
+    <div class="hint">
+      日期留空會自動用昨天。資料來源：Cloudflare Worker（不在前端暴露 Nexon API Key）
+    </div>
+
+    <div id="status" class="hint"></div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>角色概覽</h2>
+        <div id="basicBox" class="muted">尚未查詢</div>
+      </div>
+
+      <div class="card">
+        <h2>重點能力值（來自 final_stat）</h2>
+        <div id="statBox" class="muted">尚未查詢</div>
+      </div>
+
+      <div class="card" style="grid-column: 1 / -1;">
+        <div class="row" style="justify-content: space-between; align-items:center;">
+          <h2 style="margin:0;">裝備（含潛能/星力，點列可展開細節）</h2>
+          <div class="row">
+            <span class="muted" style="font-size:12px;">顯示：</span>
+            <select id="eqPreset" disabled>
+              <option value="current" selected>目前裝備</option>
+              <option value="preset1">預設1</option>
+              <option value="preset2">預設2</option>
+              <option value="preset3">預設3</option>
+            </select>
+            <input id="eqFilter" type="text" placeholder="搜尋裝備（部位/名稱/潛能）" style="min-width:260px" disabled />
+          </div>
+        </div>
+        <div id="eqBox" class="muted" style="margin-top:10px;">尚未查詢</div>
+      </div>
+
+      <div class="card" style="grid-column: 1 / -1;">
+        <h2>原始 JSON（建議需要時再展開）</h2>
+        <details>
+          <summary>展開/收合</summary>
+          <div class="tools">
+            <button id="btnCopy" disabled>複製 JSON</button>
+          </div>
+          <pre id="jsonOut">{}</pre>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ===== 你只要改這裡 =====
+    const WORKER_BASE = "https://maple-proxy.ezraop.workers.dev";
+    // =======================
+
+    let lastJson = null;
+    let lastEquipRows = [];
+
+    const $ = id => document.getElementById(id);
+
+    function pad2(n){ return String(n).padStart(2,"0"); }
+
+    // 用「本機時區」算昨天（台灣不會 DST，這樣很穩）
+    function getYesterdayYMD(){
+      const d = new Date();
+      d.setHours(12,0,0,0);
+      d.setDate(d.getDate() - 1);
+      return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    }
+
+    function setStatus(msg, isErr=false){
+      const el = $("status");
+      el.innerHTML = isErr ? `<span class="err">❌ ${msg}</span>` : `✅ ${msg}`;
+      if(!msg) el.textContent = "";
+    }
+
+    function safe(v){ return (v===undefined || v===null) ? "" : v; }
+
+    function statMap(finalStatArr){
+      const m = {};
+      if(Array.isArray(finalStatArr)){
+        for(const s of finalStatArr){
+          if(s && s.stat_name) m[s.stat_name] = s.stat_value;
+        }
+      }
+      return m;
+    }
+
+    function pickStat(m, keys){
+      for(const k of keys) if(m[k] !== undefined && m[k] !== null && m[k] !== "") return m[k];
+      return "";
+    }
+
+    function toCsvRow(values){
+      return values.map(v=>{
+        const s = String(v ?? "");
+        if (/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+        return s;
+      }).join(",");
+    }
+
+    function downloadText(filename, text, mime){
+      const blob = new Blob([text], {type: mime || "text/plain"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function normalizeStr(s){
+      return String(s||"").toLowerCase();
+    }
+
+    function buildBasic(basic, pop, date, ocid){
+      const img = basic.character_image || "";
+      const html = `
+        <div class="topInfo">
+          <img class="avatar" src="${img}" alt="character" onerror="this.style.display='none'"/>
+          <div style="flex:1;">
+            <div style="font-size:16px;"><b>${safe(basic.character_name)}</b> <span class="muted">（${safe(basic.world_name)}）</span></div>
+            <div class="muted" style="font-size:12px; margin-top:4px;">
+              ${safe(basic.character_class)}｜Lv.${safe(basic.character_level)}｜EXP ${safe(basic.character_exp)}（${safe(basic.character_exp_rate)}%）
+            </div>
+            <div class="muted" style="font-size:12px; margin-top:4px;">
+              公會：${safe(basic.character_guild_name)}｜名聲：${safe(pop.popularity)}｜OCID：${safe(ocid)}｜日期：${safe(date)}
+            </div>
+          </div>
+        </div>
+      `;
+      return html;
+    }
+
+    function buildStatHighlights(m){
+      const boss = pickStat(m, ["BOSS怪物傷害","Boss傷害","BOSS傷害"]);
+      const ignore = pickStat(m, ["無視防禦率","無視防禦","無視防禦率(%)"]);
+      const critDmg = pickStat(m, ["爆擊傷害","爆擊傷害(%)"]);
+      const critRate = pickStat(m, ["爆擊機率","爆擊率","爆擊機率(%)"]);
+      const finalDmg = pickStat(m, ["最終傷害","最終傷害(%)"]);
+      const dmg = pickStat(m, ["傷害","傷害(%)"]);
+      const combat = pickStat(m, ["戰鬥力"]);
+      const atk = pickStat(m, ["攻擊力"]);
+      const all = [
+        ["戰鬥力", combat],
+        ["BOSS傷", boss],
+        ["無視", ignore],
+        ["爆傷", critDmg],
+        ["爆率", critRate],
+        ["最終傷", finalDmg],
+        ["傷害", dmg],
+        ["攻擊力", atk],
+      ];
+      return `
+        <div class="pillRow">
+          ${all.map(([k,v])=>`<div class="pill"><span class="muted">${k}</span> <b>${safe(v)}</b></div>`).join("")}
+        </div>
+        <div class="hint" style="margin-top:10px;">* 欄位名稱以 Nexon 回傳為準（final_stat）</div>
+      `;
+    }
+
+    function getEquipList(itemEquipment, presetKey){
+      if(!itemEquipment) return [];
+      if(presetKey === "current") return itemEquipment.item_equipment || [];
+      if(presetKey === "preset1") return itemEquipment.item_equipment_preset_1 || [];
+      if(presetKey === "preset2") return itemEquipment.item_equipment_preset_2 || [];
+      if(presetKey === "preset3") return itemEquipment.item_equipment_preset_3 || [];
+      return itemEquipment.item_equipment || [];
+    }
+
+    function equipToRows(eqList, date, charName, world){
+      // 盡量把重要欄位攤平（其餘放到 details 顯示）
+      return eqList.map(it=>{
+        const pot = [it.potential_option_1, it.potential_option_2, it.potential_option_3].filter(Boolean).join(" / ");
+        const addPot = [it.additional_potential_option_1, it.additional_potential_option_2, it.additional_potential_option_3].filter(Boolean).join(" / ");
+        const total = it.item_total_option || {};
+        return {
+          date, character_name: charName, world_name: world,
+          part: safe(it.item_equipment_part),
+          slot: safe(it.item_equipment_slot),
+          item_name: safe(it.item_name),
+          starforce: safe(it.starforce),
+          potential_grade: safe(it.potential_option_grade),
+          additional_potential_grade: safe(it.additional_potential_option_grade),
+          potential: pot,
+          additional_potential: addPot,
+          attack_power: safe(total.attack_power),
+          boss_damage: safe(total.boss_damage),
+          ignore_monster_armor: safe(total.ignore_monster_armor),
+          all_stat: safe(total.all_stat),
+          str: safe(total.str), dex: safe(total.dex), int: safe(total.int), luk: safe(total.luk),
+          item_icon: safe(it.item_icon),
+          raw: it
+        };
+      });
+    }
+
+    function renderEquipTable(rows){
+      if(!rows.length) return `<div class="muted">沒有裝備資料（可能是你選快速模式或 API 當下沒回）</div>`;
+
+      const header = `
+        <table>
+          <thead>
+            <tr>
+              <th style="width:110px;">部位</th>
+              <th>名稱（點開看細節）</th>
+              <th style="width:80px;">星力</th>
+              <th style="width:120px;">主潛等級</th>
+              <th style="width:120px;">附潛等級</th>
+              <th style="width:220px;">主潛</th>
+              <th style="width:220px;">附潛</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      const body = rows.map(r=>{
+        const it = r.raw;
+        const total = it.item_total_option || {};
+        const base = it.item_base_option || {};
+        const add = it.item_add_option || {};
+        const etc = it.item_etc_option || {};
+        const sf = it.item_starforce_option || {};
+
+        const detail = `
+          <div class="kvs" style="margin-top:10px;">
+            <div class="k">攻擊力(總)</div><div>${safe(total.attack_power)} / 魔攻 ${safe(total.magic_power)}</div>
+            <div class="k">BOSS / 無視</div><div>${safe(total.boss_damage)} / ${safe(total.ignore_monster_armor)}</div>
+            <div class="k">全屬性 / STR DEX INT LUK</div><div>${safe(total.all_stat)} / ${safe(total.str)} ${safe(total.dex)} ${safe(total.int)} ${safe(total.luk)}</div>
+            <div class="k">卷數/剪刀/金槌</div><div>${safe(it.scroll_upgrade)} / ${safe(it.cuttable_count)} / ${safe(it.golden_hammer_flag)}</div>
+            <div class="k">外觀</div><div>${safe(it.item_shape_name)}</div>
+
+            <div class="k">總屬性</div><div class="muted">${JSON.stringify(total)}</div>
+            <div class="k">基礎</div><div class="muted">${JSON.stringify(base)}</div>
+            <div class="k">追加</div><div class="muted">${JSON.stringify(add)}</div>
+            <div class="k">其他</div><div class="muted">${JSON.stringify(etc)}</div>
+            <div class="k">星力加成</div><div class="muted">${JSON.stringify(sf)}</div>
+          </div>
+        `;
+
+        return `
+          <tr>
+            <td>${safe(r.part)}</td>
+            <td>
+              <details>
+                <summary>${safe(r.item_name)}</summary>
+                <div class="muted" style="margin-top:6px;">
+                  <img src="${safe(r.item_icon)}" style="width:34px;height:34px;border:1px solid var(--line);border-radius:8px;vertical-align:middle;margin-right:8px;" onerror="this.style.display='none'"/>
+                  <span>槽位：${safe(r.slot)}</span>
+                </div>
+                ${detail}
+              </details>
+            </td>
+            <td>${safe(r.starforce)}</td>
+            <td>${safe(r.potential_grade)}</td>
+            <td>${safe(r.additional_potential_grade)}</td>
+            <td>${safe(r.potential)}</td>
+            <td>${safe(r.additional_potential)}</td>
+          </tr>
+        `;
+      }).join("");
+
+      const foot = `</tbody></table>`;
+      return header + body + foot;
+    }
+
+    function applyEquipFilter(){
+      const q = normalizeStr($("eqFilter").value.trim());
+      if(!q){
+        $("eqBox").innerHTML = renderEquipTable(lastEquipRows);
+        return;
+      }
+      const filtered = lastEquipRows.filter(r=>{
+        const s = normalizeStr(`${r.part} ${r.slot} ${r.item_name} ${r.potential_grade} ${r.additional_potential_grade} ${r.potential} ${r.additional_potential}`);
+        return s.includes(q);
+      });
+      $("eqBox").innerHTML = renderEquipTable(filtered);
+    }
+
+    async function query(){
+      const name = $("name").value.trim();
+      if(!name){ setStatus("請輸入角色暱稱", true); return; }
+
+      let date = $("date").value.trim();
+      if(!date){
+        date = getYesterdayYMD();
+        $("date").value = date;
+      }
+
+      const mode = $("mode").value;
+      const parts = (mode === "fast")
+        ? "basic,popularity,stat"
+        : "basic,popularity,stat,itemEquipment,cashitemEquipment,symbolEquipment";
+
+      $("btnQuery").disabled = true;
+      $("btnCsvChar").disabled = true;
+      $("btnCsvEq").disabled = true;
+      $("btnCopy").disabled = true;
+      $("eqPreset").disabled = true;
+      $("eqFilter").disabled = true;
+
+      setStatus("查詢中...");
+      $("basicBox").innerHTML = `<span class="muted">查詢中…</span>`;
+      $("statBox").innerHTML = `<span class="muted">查詢中…</span>`;
+      $("eqBox").innerHTML = `<span class="muted">查詢中…</span>`;
+
+      const url = `${WORKER_BASE.replace(/\/+$/,"")}/character?name=${encodeURIComponent(name)}&date=${encodeURIComponent(date)}&parts=${encodeURIComponent(parts)}`;
+
+      try{
+        const resp = await fetch(url);
+        const json = await resp.json();
+        lastJson = json;
+        $("jsonOut").textContent = JSON.stringify(json, null, 2);
+
+        if(!json.ok){
+          setStatus(json.error || "查詢失敗", true);
+          $("basicBox").innerHTML = `<span class="err">失敗：${safe(json.error || JSON.stringify(json.body || json))}</span>`;
+          $("statBox").innerHTML = `<span class="muted">-</span>`;
+          $("eqBox").innerHTML = `<span class="muted">-</span>`;
+          return;
+        }
+
+        const basic = json.data?.basic || {};
+        const pop = json.data?.popularity || {};
+        const stat = json.data?.stat || {};
+        const m = statMap(stat.final_stat);
+
+        $("basicBox").innerHTML = buildBasic(basic, pop, json.query?.date || date, json.ocid || "");
+        $("statBox").innerHTML = buildStatHighlights(m);
+
+        // 裝備
+        const itemEq = json.data?.itemEquipment || null;
+        const presetKey = $("eqPreset").value;
+        const eqList = getEquipList(itemEq, presetKey);
+        lastEquipRows = equipToRows(eqList, json.query?.date || date, basic.character_name || name, basic.world_name || "");
+
+        $("eqBox").innerHTML = renderEquipTable(lastEquipRows);
+
+        $("btnCsvChar").disabled = false;
+        $("btnCopy").disabled = false;
+
+        if(mode === "full" && lastEquipRows.length){
+          $("btnCsvEq").disabled = false;
+          $("eqPreset").disabled = false;
+          $("eqFilter").disabled = false;
+        }
+
+        setStatus("完成");
+      }catch(e){
+        setStatus(String(e), true);
+      }finally{
+        $("btnQuery").disabled = false;
+      }
+    }
+
+    // CSV 匯出：角色
+    function exportCharCsv(){
+      if(!lastJson?.ok) return;
+      const basic = lastJson.data?.basic || {};
+      const pop = lastJson.data?.popularity || {};
+      const stat = lastJson.data?.stat || {};
+      const m = statMap(stat.final_stat);
+
+      const date = lastJson.query?.date || $("date").value || getYesterdayYMD();
+      const row = {
+        date,
+        character_name: basic.character_name,
+        world_name: basic.world_name,
+        class: basic.character_class,
+        level: basic.character_level,
+        exp: basic.character_exp,
+        exp_rate: basic.character_exp_rate,
+        guild: basic.character_guild_name,
+        popularity: pop.popularity,
+        combat_power: pickStat(m, ["戰鬥力"]),
+        boss_damage: pickStat(m, ["BOSS怪物傷害"]),
+        ignore_def: pickStat(m, ["無視防禦率"]),
+        crit_rate: pickStat(m, ["爆擊機率"]),
+        crit_dmg: pickStat(m, ["爆擊傷害"]),
+        final_dmg: pickStat(m, ["最終傷害"]),
+        damage: pickStat(m, ["傷害"]),
+        ocid: lastJson.ocid,
+        character_image: basic.character_image
+      };
+
+      const headers = Object.keys(row);
+      const csv = [toCsvRow(headers), toCsvRow(headers.map(h=>row[h]))].join("\n");
+      downloadText(`${row.character_name}_${date}_char.csv`, csv, "text/csv");
+    }
+
+    // CSV 匯出：裝備
+    function exportEquipCsv(){
+      if(!lastJson?.ok || !lastEquipRows?.length) return;
+
+      // 把 raw 拿掉，避免 CSV 太肥
+      const rows = lastEquipRows.map(r=>{
+        const { raw, ...flat } = r;
+        return flat;
+      });
+
+      const headers = Object.keys(rows[0] || {});
+      const csvLines = [toCsvRow(headers)];
+      for(const r of rows){
+        csvLines.push(toCsvRow(headers.map(h=>r[h])));
+      }
+      downloadText(`${rows[0].character_name}_${rows[0].date}_equip.csv`, csvLines.join("\n"), "text/csv");
+    }
+
+    function copyJson(){
+      if(!lastJson) return;
+      navigator.clipboard.writeText(JSON.stringify(lastJson, null, 2));
+      setStatus("已複製 JSON");
+      setTimeout(()=>setStatus("完成"), 800);
+    }
+
+    // init
+    $("date").value = getYesterdayYMD();
+    $("btnQuery").addEventListener("click", query);
+    $("btnCsvChar").addEventListener("click", exportCharCsv);
+    $("btnCsvEq").addEventListener("click", exportEquipCsv);
+    $("btnCopy").addEventListener("click", copyJson);
+    $("eqPreset").addEventListener("change", ()=>{
+      if(!lastJson?.ok) return;
+      const basic = lastJson.data?.basic || {};
+      const itemEq = lastJson.data?.itemEquipment || null;
+      const eqList = getEquipList(itemEq, $("eqPreset").value);
+      const date = lastJson.query?.date || $("date").value || getYesterdayYMD();
+      lastEquipRows = equipToRows(eqList, date, basic.character_name || $("name").value, basic.world_name || "");
+      applyEquipFilter();
+    });
+    $("eqFilter").addEventListener("input", applyEquipFilter);
+  </script>
+</body>
+</html>
