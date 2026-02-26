@@ -109,6 +109,7 @@ h1{margin:0 0 4px;font-size:22px;font-weight:800;letter-spacing:.2px;}
   color:var(--text);
   display:flex; align-items:center; justify-content:space-between;
 }
+.abilityWrap{display:flex;flex-direction:column;gap:8px;}
 .small{color:var(--muted);font-size:12px}
 .equip-grid{
   display:flex; flex-wrap:wrap; gap:10px;
@@ -277,6 +278,7 @@ h1{margin:0 0 4px;font-size:22px;font-weight:800;letter-spacing:.2px;}
 .ms-buff.orange{background:linear-gradient(90deg, #ffb020, #ffd27a);}
 
 
+.ms-buff.cyan{background:linear-gradient(90deg, #3ac6ff, #a7e8ff);}
 /* 內潛（依級別上色） */
 .ability-wrap{margin-top:8px;display:flex;flex-direction:column;gap:10px;}
 .ms-buff.blue{background:linear-gradient(0deg,#0b4a8f,#0f5fb8);}
@@ -1614,6 +1616,39 @@ document.addEventListener("keydown", (e)=> {
 // 預填（方便你測）
 if (!$("name").value) $("name").value = "Ezra絕";
 
+
+
+
+function renderAbility(data){
+  const a = data && data.ability;
+  if(!a) return "";
+  let lines = Array.isArray(a.ability_info) ? a.ability_info : [];
+  if(!lines.length){
+    const pn = a.preset_no || a.use_preset_no || 1;
+    const preset = a["ability_preset_"+pn];
+    if(preset && Array.isArray(preset.ability_info)) lines = preset.ability_info;
+  }
+  const gradeToClass = (grade)=>{
+    const g = String(grade||"");
+    if(g.includes("傳說")) return "green";
+    if(g.includes("特殊")) return "cyan"; // 特殊 / 特殊級 都算
+    if(g.includes("罕見") || g.includes("稀有")) return "orange";
+    return "gray";
+  };
+  const htmlLines = lines.map(li=>{
+    const g = li && (li.ability_grade || a.ability_grade) || "";
+    const v = li && li.ability_value || "";
+    return `<div class="ms-buff ${gradeToClass(g)}">${escapeHtml(v)}</div>`;
+  }).join("");
+
+  const right = a.preset_no ? `<span class="small">Preset ${escapeHtml(String(a.preset_no))}</span>` : (a.ability_grade ? `<span class="small">${escapeHtml(String(a.ability_grade))}</span>` : "");
+  return `
+    <section class="section">
+      <div class="section-title"><span>👁️ 內潛</span>${right}</div>
+      <div class="abilityWrap">${htmlLines || `<div class="small">無資料</div>`}</div>
+    </section>
+  `;
+}
 
 </script>
 </body>
