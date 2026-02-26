@@ -5,140 +5,277 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Maple 角色查詢（Web）</title>
   <style>
-    :root{--fg:#111;--muted:#666;--line:#e9e9e9;--card:#fff;--bg:#f6f7f9;}
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;}
-    .wrap{max-width:1100px;margin:28px auto;padding:0 16px;}
-    h1{margin:0 0 6px;font-size:22px;font-weight:800;}
-    .sub{color:var(--muted);font-size:13px;margin-bottom:14px}
-    .search{display:flex;gap:10px;align-items:center}
-    input[type="text"]{flex:1;min-width:220px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:14px;outline:none;background:#fff}
-    button{border:0;background:#111;color:#fff;border-radius:10px;padding:11px 16px;font-size:14px;cursor:pointer}
-    button:disabled{opacity:.6;cursor:not-allowed}
-    .status{margin:10px 0 0;color:var(--muted);font-size:13px}
-    .row{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 14px;box-shadow:0 1px 0 rgba(0,0,0,.02)}
-    .card.big{flex:1;min-width:320px}
-    .card.full{width:100%}
-    .title{font-weight:800;margin:0 0 10px;font-size:16px}
-    .muted{color:var(--muted)}
-    .profile{display:flex;gap:12px;align-items:flex-start}
-    .avatar{width:68px;height:68px;border-radius:14px;background:#eee;flex:0 0 auto;object-fit:cover}
-    .pname{font-size:20px;font-weight:900;margin:0}
-    .pmeta{color:var(--muted);font-size:13px;line-height:1.4;margin-top:3px}
-    .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
-    .chip{border:1px solid var(--line);background:#fafafa;border-radius:999px;padding:4px 10px;font-size:12px;color:#333}
-    .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
-    @media (max-width:860px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
-    .metric{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff}
-    .mname{color:var(--muted);font-size:12px}
-    .mval{font-size:16px;font-weight:900;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .equip-grid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:10px}
-    @media (max-width:1100px){.equip-grid{grid-template-columns:repeat(8,minmax(0,1fr));}}
-    @media (max-width:860px){.equip-grid{grid-template-columns:repeat(6,minmax(0,1fr));}}
-    @media (max-width:520px){.equip-grid{grid-template-columns:repeat(4,minmax(0,1fr));}}
-    .equip{border:1px solid var(--line);border-radius:14px;padding:10px 8px;text-align:center;background:#fff}
-    .equip img{width:44px;height:44px;image-rendering:pixelated;object-fit:contain}
-    .ename{font-size:12px;margin-top:6px;line-height:1.2;height:2.4em;overflow:hidden}
-    .tabs{display:flex;gap:8px;align-items:center;margin-top:10px}
-    .tab{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 10px;font-size:12px;color:#333;cursor:pointer}
-    .tab.active{background:#111;color:#fff;border-color:#111}
-    table{width:100%;border-collapse:collapse}
-    th,td{border-bottom:1px solid var(--line);padding:8px 8px;font-size:13px;text-align:left}
-    th{color:var(--muted);font-weight:700}
-    .right{text-align:right}
-    .small{font-size:12px;color:var(--muted)}
-    .err{color:#b00020;font-weight:700}
 
-    /* === Tooltip === */
-    .tooltip {
-      position: fixed;
-      z-index: 99999;
-      display: none;
-      max-width: 560px;
-      max-height: 70vh;
-      overflow: auto;
-      background: rgba(17,17,17,0.95);
-      color: #fff;
-      padding: 10px 12px;
-      border-radius: 12px;
-      font-size: 12px;
-      line-height: 1.35;
-      white-space: pre-wrap;
-      box-shadow: 0 14px 35px rgba(0,0,0,.25);
-      pointer-events: none;
-    }
-  
-
-/* ===== Modal (點一下裝備/時裝跳出完整數值) ===== */
-.no-scroll { overflow: hidden; }
-
-.ability-list { margin: 8px 0 0 18px; padding: 0; line-height: 1.6; color: #e7e7e7; }
-
-.modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.65);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: 20px;
+:root{
+  --bg:#050608;
+  --panel:#1b1f2a;
+  --panel2:#23283a;
+  --line:#303851;
+  --text:#e9edf7;
+  --muted:#aab4c3;
+  --accent:#00d1ff;
+  --good:#4ade80;
+  --warn:#fbbf24;
+  --bad:#fb7185;
 }
-.modal.hidden { display: none; }
-.modal-panel {
-  width: min(720px, 96vw);
-  max-height: 92vh;
-  overflow: auto;
-  background: #1b1f2a;
-  border: 1px solid #2a3143;
-  border-radius: 14px;
-  box-shadow: 0 20px 60px rgba(0,0,0,.55);
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  background: radial-gradient(1000px 600px at 20% 0%, rgba(0,209,255,.12), transparent 55%),
+              radial-gradient(900px 540px at 90% 10%, rgba(168,85,247,.10), transparent 60%),
+              var(--bg);
+  color:var(--text);
 }
-.modal-head {
-  display: flex;
-  justify-content: flex-end;
-  padding: 10px 12px;
-  position: sticky;
-  top: 0;
-  background: linear-gradient(#1b1f2a, rgba(27,31,42,.92));
-  backdrop-filter: blur(6px);
-  border-bottom: 1px solid #2a3143;
+a{color:var(--accent);text-decoration:none;}
+.wrap{max-width:1200px;margin:0 auto;padding:28px 18px 44px;}
+h1{margin:0 0 4px;font-size:22px;font-weight:800;letter-spacing:.2px;}
+.sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0 16px;}
+.input{
+  flex:1 1 360px;
+  height:44px;
+  padding:0 14px;
+  border-radius:10px;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.04);
+  color:var(--text);
+  outline:none;
 }
-.modal-close {
-  cursor: pointer;
-  border: 0;
-  background: #2a3143;
-  color: #fff;
-  padding: 8px 10px;
-  border-radius: 10px;
+.input:focus{border-color:rgba(0,209,255,.55); box-shadow:0 0 0 3px rgba(0,209,255,.12);}
+.btn{
+  height:44px;
+  padding:0 16px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.06);
+  color:var(--text);
+  cursor:pointer;
+  font-weight:700;
 }
-.modal-body { padding: 14px 16px 18px; }
+.btn.primary{background:linear-gradient(180deg, rgba(0,209,255,.20), rgba(0,209,255,.08)); border-color:rgba(0,209,255,.35);}
+.btn:active{transform:translateY(1px);}
+.status{min-height:18px;color:var(--muted);font-size:13px;margin:6px 0 14px;}
+.panel{
+  background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.03));
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:16px;
+  box-shadow:0 10px 30px rgba(0,0,0,.25);
+}
+.grid{
+  display:grid;
+  grid-template-columns: 300px 1fr;
+  gap:14px;
+}
+@media (max-width: 980px){
+  .grid{grid-template-columns:1fr;}
+}
+.char{
+  display:flex; gap:14px; align-items:center;
+}
+.avatar{
+  width:88px;height:88px;border-radius:18px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.04);
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+}
+.avatar img{width:100%;height:100%;object-fit:contain;image-rendering:auto;}
+.char h2{margin:0;font-size:20px;font-weight:900;}
+.char .meta{color:var(--muted);font-size:13px;margin-top:2px;line-height:1.45;}
+.kpis{
+  display:grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap:10px;
+  margin-top:12px;
+}
+@media (max-width: 980px){
+  .kpis{grid-template-columns: repeat(2, minmax(0,1fr));}
+}
+.kpi{
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(0,0,0,.20);
+  padding:10px 12px;
+}
+.kpi .k{color:var(--muted);font-size:12px;margin-bottom:4px}
+.kpi .v{font-size:18px;font-weight:900;letter-spacing:.2px}
+.section-title{
+  margin:18px 0 10px;
+  font-size:14px;
+  font-weight:900;
+  color:var(--text);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.small{color:var(--muted);font-size:12px}
+.equip-grid{
+  display:flex; flex-wrap:wrap; gap:10px;
+}
+.equip{
+  width:84px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.22);
+  padding:8px 8px 6px;
+  cursor:pointer;
+  user-select:none;
+  transition:transform .08s ease, border-color .12s ease;
+}
+.equip:hover{transform:translateY(-1px); border-color:rgba(0,209,255,.35);}
+.equip .iconbox{
+  width:68px;height:68px;border-radius:12px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.04);
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+  margin:0 auto;
+}
+.equip img{max-width:100%;max-height:100%;image-rendering:auto;}
+.equip .nm{
+  margin-top:6px;
+  font-size:11px;
+  line-height:1.2;
+  text-align:center;
+  color:rgba(233,237,247,.92);
+  min-height:26px;
+  overflow:hidden;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+}
+.equip .sf{
+  text-align:center;
+  font-size:11px;
+  color:var(--muted);
+  margin-top:2px;
+}
 
-/* ===== Maple 風格 tooltip box ===== */
-.tooltipBox { color: #e8e8e8; font-size: 14px; }
-.tooltipBox .starline { letter-spacing: 2px; color: #fff; opacity: .9; margin-bottom: 8px; white-space: pre; }
-.tooltipBox .hrow { display: flex; gap: 12px; align-items: center; }
-.tooltipBox .bigicon { width: 56px; height: 56px; border-radius: 12px; background: #101521; border: 1px solid #2a3143; }
-.tooltipBox .hname { font-size: 18px; font-weight: 800; }
-.tooltipBox .hmeta { margin-top: 2px; color: #b9c1d9; font-size: 12px; }
-.tooltipBox .sec { margin-top: 12px; padding-top: 10px; border-top: 1px solid #2a3143; }
-.tooltipBox .sectitle { font-weight: 800; color: #e7eefc; margin-bottom: 6px; }
-.tooltipBox .kvlist { display: flex; flex-direction: column; gap: 6px; }
-.tooltipBox .kv { display: flex; justify-content: space-between; gap: 12px; }
-.tooltipBox .kv span:first-child { color: #c7d0ea; }
-.tooltipBox .kv span:last-child { color: #ffffff; font-variant-numeric: tabular-nums; }
-.tooltipBox .line { margin: 4px 0; }
-.tooltipBox .pot { padding-left: 2px; }
-.tooltipBox .desc { margin-top: 8px; color: #c7d0ea; line-height: 1.4; }
-.tooltipBox .grade { padding: 2px 8px; border-radius: 999px; font-size: 12px; margin-left: 6px; }
-.g-normal { background: #2a3143; color: #d4d8e5; }
-.g-rare { background: #1f3b7a; color: #bcd3ff; }
-.g-epic { background: #4a2a7a; color: #e2c5ff; }
-.g-unique { background: #0f5b5b; color: #baffff; }
-.g-legend { background: #577a00; color: #eaff9b; }
-.tooltipBox details > summary { cursor: pointer; }
-.tooltipBox .json { background: #0f1320; border: 1px solid #2a3143; border-radius: 12px; padding: 10px; overflow: auto; }
+/* ===== Modal ===== */
+.modal{
+  position:fixed; inset:0;
+  background:rgba(0,0,0,.60);
+  z-index:9999;
+}
+.modal.hidden{display:none;}
+.modal-panel{
+  position:fixed;
+  width:420px;
+  max-width:calc(100vw - 32px);
+  max-height:calc(100vh - 32px);
+  overflow:auto;
+  background:transparent; /* inner tooltip handles bg */
+}
+.modal-x{
+  position:absolute;
+  top:10px; right:10px;
+  width:34px;height:34px;
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,.12);
+  background:rgba(0,0,0,.35);
+  color:var(--text);
+  font-size:18px;
+  cursor:pointer;
+  z-index:2;
+}
+.modal-x:hover{border-color:rgba(0,209,255,.35);}
+
+/* ===== Maple-like tooltip ===== */
+.ms-tip{
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.14);
+  background:linear-gradient(180deg, rgba(43,47,66,.98), rgba(33,36,54,.98));
+  box-shadow:0 24px 70px rgba(0,0,0,.55);
+  padding:14px 14px 12px;
+  position:relative;
+}
+.ms-stars{
+  font-size:14px;
+  letter-spacing:1px;
+  color:#fff;
+  opacity:.95;
+  text-shadow:0 1px 0 rgba(0,0,0,.35);
+  margin-bottom:6px;
+  line-height:1.1;
+  white-space:nowrap;
+}
+.ms-title{
+  font-size:16px;
+  font-weight:900;
+  margin-bottom:10px;
+  color:#fff;
+}
+.ms-top{
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+}
+.ms-iconframe{
+  width:62px;height:62px;border-radius:14px;
+  border:2px solid rgba(173,255,47,.55);
+  box-shadow:0 0 0 2px rgba(0,0,0,.40) inset;
+  background:rgba(0,0,0,.20);
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+  flex:0 0 auto;
+}
+.ms-iconframe img{max-width:100%;max-height:100%;}
+.ms-lines{
+  flex:1;
+  font-size:13px;
+  line-height:1.55;
+  color:rgba(255,255,255,.92);
+}
+.ms-lines .muted{color:rgba(170,180,195,.95);}
+.ms-divider{
+  height:1px;
+  background:rgba(255,255,255,.10);
+  margin:10px 0;
+}
+.ms-bar{
+  margin-top:10px;
+  border-radius:6px;
+  padding:6px 10px;
+  font-size:13px;
+  font-weight:900;
+  display:flex;
+  gap:8px;
+  align-items:center;
+  color:#0b0c10;
+}
+.ms-bar .tag{
+  width:22px;height:22px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:1000;
+  background:rgba(0,0,0,.18);
+  border:1px solid rgba(0,0,0,.18);
+}
+.ms-bar.legendary{background:linear-gradient(90deg, #c7ff3a, #7cffd6);}
+.ms-bar.unique{background:linear-gradient(90deg, #ffd43a, #ffef7a);}
+.ms-bar.epic{background:linear-gradient(90deg, #a78bfa, #60a5fa);}
+.ms-bar.rare{background:linear-gradient(90deg, #60a5fa, #22d3ee);}
+.ms-bar.common{background:linear-gradient(90deg, #94a3b8, #cbd5e1);}
+.ms-opt{
+  margin-top:6px;
+  font-size:13px;
+  color:rgba(255,255,255,.94);
+}
+.ms-opt .line{margin:2px 0;}
+.ms-foot{
+  margin-top:10px;
+  display:flex;flex-direction:column;gap:6px;
+}
+.ms-buff{
+  border-radius:8px;
+  padding:8px 10px;
+  font-size:13px;
+  font-weight:800;
+  color:#10131a;
+}
+.ms-buff.green{background:linear-gradient(90deg, #b8ff3a, #7cffd6);}
+.ms-buff.orange{background:linear-gradient(90deg, #ffb020, #ffd27a);}
+
 </style>
 </head>
 <body>
@@ -154,20 +291,16 @@
 
     <div id="out" class="row"></div>
   </div>
-
-  <div id="tip" class="tooltip"></div>
-
-  <div id="modal" class="modal hidden">
-    <div class="modal-panel">
-      <div class="modal-head">
-        <button class="modal-close" data-close="1">關閉</button>
-      </div>
+<div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-panel" role="document">
+      <button class="modal-x" type="button" aria-label="關閉">×</button>
       <div class="modal-body"></div>
     </div>
   </div>
 
 
 <script>
+
 
 /** ===== 基本設定 ===== */
 const WORKER_BASE = "https://maple-proxy.ezraop.workers.dev";
@@ -264,6 +397,66 @@ function escapeHtml(input) {
   }[ch]));
 }
 
+
+function renderStars_(n, max) {
+  const nn = Math.max(0, Math.floor(Number(n) || 0));
+  const mm = Math.max(0, Math.floor(Number(max) || 0));
+  if (!mm) return "";
+  const filled = "★".repeat(Math.min(nn, mm));
+  const empty = "☆".repeat(Math.max(0, mm - nn));
+  // 分兩行顯示，避免太長
+  const s = filled + empty;
+  if (s.length <= 15) return s;
+  return s.slice(0, 15) + "<br>" + s.slice(15);
+}
+
+function fmtNum_(v, isPct) {
+  const n = Number(v || 0);
+  const sign = n >= 0 ? "+" : "";
+  const abs = Math.abs(n);
+  const txt = abs % 1 === 0 ? abs.toString() : abs.toFixed(2);
+  return sign + txt + (isPct ? "%" : "");
+}
+
+function potentialClass_(grade) {
+  const g = String(grade || "").trim();
+  if (!g) return "common";
+  if (g.includes("傳說") || g.toLowerCase().includes("legend")) return "legendary";
+  if (g.includes("罕見") || g.toLowerCase().includes("unique")) return "unique";
+  if (g.includes("史詩") || g.toLowerCase().includes("epic")) return "epic";
+  if (g.includes("稀有") || g.toLowerCase().includes("rare")) return "rare";
+  return "common";
+}
+
+function potentialTag_(grade) {
+  const g = String(grade || "").trim();
+  if (!g) return "C";
+  if (g.includes("傳說") || g.toLowerCase().includes("legend")) return "L";
+  if (g.includes("罕見") || g.toLowerCase().includes("unique")) return "U";
+  if (g.includes("史詩") || g.toLowerCase().includes("epic")) return "E";
+  if (g.includes("稀有") || g.toLowerCase().includes("rare")) return "R";
+  return "C";
+}
+
+function renderPotentialBlock_(grade, opts, isAdd) {
+  const g = String(grade || "").trim();
+  const list = (opts || []).filter((x) => String(x || "").trim());
+  if (!g && !list.length) return "";
+  const cls = potentialClass_(g);
+  const tag = potentialTag_(g);
+  const title = isAdd ? "附加潛能" : "潛能";
+  return `
+    <div class="ms-bar ${cls}">
+      <div class="tag">${tag}</div>
+      <div>${escapeHtml(title)}</div>
+    </div>
+    <div class="ms-opt">
+      ${list.map((s)=>`<div class="line">${escapeHtml(String(s))}</div>`).join("")}
+    </div>
+  `;
+}
+
+
 /** ===== 8 大數值抽取 ===== */
 function statArrayToMap(final_stat) {
   const map = {};
@@ -322,33 +515,64 @@ function topByBigInt(field, limit=50) {
   }).slice(0, limit);
 }
 
-/** ===== Tooltip（滑過去顯示完整數值）===== */
+/** ===== Tooltip（點一下顯示完整數值（點背景可關閉））===== */
 let __lastPointer = { x: 0, y: 0 };
 let __tipInited = false;
 window.__equipItems = [];
 window.__cashItems = [];
 
-function openItemModal(type, idx) {
-  const modal = document.getElementById("modal");
-  const body = modal?.querySelector(".modal-body");
-  if (!modal || !body) return;
-
+function openItemModal(type, idx, anchorEl) {
   const it = getItemByTypeIdx_(type, idx);
   if (!it) return;
 
-  body.innerHTML = (type === "equip")
-    ? buildEquipModalHtml_(it)
-    : buildCashModalHtml_(it);
+  const modal = document.getElementById("modal");
+  const panel = modal.querySelector(".modal-panel");
+  const body = modal.querySelector(".modal-body");
+
+  let html = "";
+  if (type === "equip") html = buildEquipModalHtml_(it);
+  else if (type === "cash") html = buildCashModalHtml_(it);
+  else html = "<div class='ms-tip'>無法顯示</div>";
+
+  body.innerHTML = html;
 
   modal.classList.remove("hidden");
-  document.body.classList.add("no-scroll");
+
+  // 先給一個合理寬度
+  const desiredW = 420;
+  const maxW = Math.max(280, window.innerWidth - 32);
+  const pw = Math.min(desiredW, maxW);
+  panel.style.width = pw + "px";
+
+  // 定位：優先放在點擊物件左側，空間不夠再放右側
+  const rect = anchorEl ? anchorEl.getBoundingClientRect() : { left: window.innerWidth / 2, right: window.innerWidth / 2, top: window.innerHeight / 2 };
+  let left = rect.left - pw - 14;
+  if (left < 16) left = rect.right + 14;
+  left = Math.min(left, window.innerWidth - pw - 16);
+  left = Math.max(16, left);
+
+  // top 先對齊到 item 上方一點，之後再 clamp
+  let top = rect.top - 80;
+  top = Math.max(16, top);
+
+  panel.style.left = left + "px";
+  panel.style.top = top + "px";
+
+  // 顯示後取得高度，避免超出視窗
+  requestAnimationFrame(() => {
+    const ph = panel.offsetHeight || 0;
+    let t = top;
+    if (t + ph > window.innerHeight - 16) t = Math.max(16, window.innerHeight - ph - 16);
+    panel.style.top = t + "px";
+  });
 }
 
 function closeItemModal() {
   const modal = document.getElementById("modal");
   if (!modal) return;
   modal.classList.add("hidden");
-  document.body.classList.remove("no-scroll");
+  const body = modal.querySelector(".modal-body");
+  if (body) body.innerHTML = "";
 }
 
 function getItemByTypeIdx_(type, idx) {
@@ -425,105 +649,125 @@ function buildOptionLines_(label, totalObj, baseObj, addObj, etcObj, starObj, ex
 }
 
 function buildEquipModalHtml_(it) {
-  const name = escapeHtml(it.item_name || "");
-  const part = escapeHtml(it.item_equipment_part || "");
-  const slot = escapeHtml(it.item_equipment_slot || "");
+  const star = Number(it.starforce || 0);
+  const starMax = 25;
+  const stars = renderStars_(star, starMax);
+
+  const title = escapeHtml(`${it.item_name || ""}${it.starforce ? ` (+${it.starforce})` : ""}`);
+
   const icon = it.item_icon || "";
-  const sf = Number(it.starforce || 0) || 0;
-  const MAX_STAR = 25;
-  const starLine = "★".repeat(Math.min(sf, MAX_STAR)) + "☆".repeat(Math.max(0, MAX_STAR - Math.min(sf, MAX_STAR)));
+  const part = it.item_equipment_part || it.item_equipment_slot || "";
 
   const total = it.item_total_option || {};
   const base = it.item_base_option || {};
   const add = it.item_add_option || {};
   const etc = it.item_etc_option || {};
-  const star = it.item_starforce_option || {};
+  const starOpt = it.item_starforce_option || {};
   const ex = it.item_exceptional_option || {};
 
-  const optHtml = buildOptionLines_("總屬性", total, base, add, etc, star, ex);
+  const keys = [
+    ["STR", "str"],
+    ["DEX", "dex"],
+    ["INT", "int"],
+    ["LUK", "luk"],
+    ["最大HP", "max_hp"],
+    ["最大MP", "max_mp"],
+    ["攻擊力", "attack_power"],
+    ["魔法攻擊力", "magic_power"],
+    ["防禦率", "armor"],
+    ["全屬性", "all_stat"],
+    ["傷害", "damage"],
+    ["BOSS怪物傷害", "boss_damage"],
+    ["無視怪物防禦率", "ignore_monster_armor"],
+    ["最終傷害", "final_damage"],
+    ["爆擊傷害", "critical_damage"],
+  ];
+  const pctKeys = new Set(["all_stat","damage","boss_damage","ignore_monster_armor","final_damage","critical_damage"]);
 
-  const pGrade = it.potential_option_grade || "";
-  const apGrade = it.additional_potential_option_grade || "";
-  const pLines = [it.potential_option_1, it.potential_option_2, it.potential_option_3].filter(Boolean);
-  const apLines = [it.additional_potential_option_1, it.additional_potential_option_2, it.additional_potential_option_3].filter(Boolean);
+  const lines = [];
+  if (part) lines.push(`<div class="muted">種類：${escapeHtml(part)}</div>`);
 
-  const potHtml = pLines.length ? pLines.map(v => `<div class="line">${escapeHtml(v)}</div>`).join("") : `<div class="muted">（無）</div>`;
-  const apHtml = apLines.length ? apLines.map(v => `<div class="line">${escapeHtml(v)}</div>`).join("") : `<div class="muted">（無）</div>`;
+  for (const [label, k] of keys) {
+    const t = Number(total[k] || 0);
+    if (!t) continue;
 
-  const desc = it.item_description ? `<div class="desc">${escapeHtml(String(it.item_description)).replace(/\n/g,"<br>")}</div>` : "";
+    const b = Number(base[k] || 0);
+    const a = Number(add[k] || 0);
+    const e = Number(etc[k] || 0);
+    const s = Number(starOpt[k] || 0);
+    const x = Number(ex[k] || 0);
+
+    const parts = [b, a, e, s, x].filter((v) => v);
+    const sumParts = parts.length ? parts.map((v) => fmtNum_(v, pctKeys.has(k))).join(" + ") : "";
+    const totalTxt = fmtNum_(t, pctKeys.has(k));
+
+    if (sumParts) {
+      lines.push(`${escapeHtml(label)}: ${totalTxt} <span class="muted">(${sumParts})</span>`);
+    } else {
+      lines.push(`${escapeHtml(label)}: ${totalTxt}`);
+    }
+  }
+
+  // 潛能
+  const pot = renderPotentialBlock_(it.potential_option_grade, [it.potential_option_1, it.potential_option_2, it.potential_option_3], false);
+  const addPot = renderPotentialBlock_(it.additional_potential_option_grade, [it.additional_potential_option_1, it.additional_potential_option_2, it.additional_potential_option_3], true);
+
+  // 靈魂 / 其他簡單資訊
+  const soulLines = [];
+  if (it.soul_name) soulLines.push(`靈魂：${escapeHtml(it.soul_name)}`);
+  if (it.soul_option) soulLines.push(`${escapeHtml(it.soul_option)}`);
 
   return `
-    <div class="tooltipBox">
-      <div class="starline">${starLine}</div>
-      <div class="hrow">
-        <img class="bigicon" src="${icon}" alt="">
-        <div class="htxt">
-          <div class="hname">${name}</div>
-          <div class="hmeta">${part} / ${slot}　<span class="muted">★${sf}</span></div>
-        </div>
+  <div class="ms-tip">
+    <div class="ms-stars">${stars}</div>
+    <div class="ms-title">${title}</div>
+
+    <div class="ms-top">
+      <div class="ms-iconframe">${icon ? `<img src="${escapeHtml(icon)}" alt="">` : ""}</div>
+      <div class="ms-lines">
+        ${lines.map((s)=>`<div>${s}</div>`).join("")}
       </div>
-
-      ${desc}
-
-      <div class="sec">
-        <div class="sectitle">屬性</div>
-        <div class="kvlist">${optHtml}</div>
-      </div>
-
-      <div class="sec">
-        <div class="sectitle">潛能 <span class="grade ${gradeClass_(pGrade)}">${escapeHtml(pGrade || "")}</span></div>
-        <div class="pot">${potHtml}</div>
-      </div>
-
-      <div class="sec">
-        <div class="sectitle">附加潛能 <span class="grade ${gradeClass_(apGrade)}">${escapeHtml(apGrade || "")}</span></div>
-        <div class="pot">${apHtml}</div>
-      </div>
-
-      <details class="sec">
-        <summary class="sectitle">原始資料（JSON）</summary>
-        <pre class="json">${escapeHtml(JSON.stringify(it, null, 2))}</pre>
-      </details>
     </div>
-  `;
+
+    ${soulLines.length ? `<div class="ms-divider"></div><div class="ms-lines">${soulLines.map((s)=>`<div>${s}</div>`).join("")}</div>` : ""}
+
+    ${(pot || addPot) ? `<div class="ms-divider"></div>` : ""}
+
+    ${pot || ""}
+    ${addPot || ""}
+  </div>`;
 }
 
 function buildCashModalHtml_(it) {
-  const name = escapeHtml(it.cash_item_name || "");
-  const part = escapeHtml(it.cash_item_equipment_part || "");
-  const slot = escapeHtml(it.cash_item_equipment_slot || "");
+  const title = escapeHtml(it.cash_item_name || "");
   const icon = it.cash_item_icon || "";
-  const opts = Array.isArray(it.cash_item_option) ? it.cash_item_option : [];
-  const optHtml = opts.length
-    ? opts.map(o => `<div class="kv"><span>${escapeHtml(o.option_type || "")}</span><span>+${escapeHtml(o.option_value || "")}</span></div>`).join("")
-    : `<div class="muted">（無）</div>`;
+  const part = it.cash_item_equipment_part || it.cash_item_equipment_slot || "";
 
-  const exp = it.date_expire ? escapeHtml(it.date_expire) : "";
-  const exp2 = it.date_option_expire ? escapeHtml(it.date_option_expire) : "";
+  const lines = [];
+  if (part) lines.push(`<div class="muted">種類：${escapeHtml(part)}</div>`);
+
+  const opts = Array.isArray(it.cash_item_option) ? it.cash_item_option : [];
+  for (const o of opts) {
+    const t = o.option_type || "";
+    const v = o.option_value || "";
+    if (!t && !v) continue;
+    lines.push(`${escapeHtml(String(t))}: ${escapeHtml(String(v))}`);
+  }
+  if (it.date_expire) lines.push(`<div class="muted">到期：${escapeHtml(it.date_expire)}</div>`);
+  if (it.date_option_expire) lines.push(`<div class="muted">選項到期：${escapeHtml(it.date_option_expire)}</div>`);
 
   return `
-    <div class="tooltipBox">
-      <div class="hrow">
-        <img class="bigicon" src="${icon}" alt="">
-        <div class="htxt">
-          <div class="hname">${name}</div>
-          <div class="hmeta">${part} / ${slot}</div>
-        </div>
+  <div class="ms-tip">
+    <div class="ms-stars">${renderStars_(0, 0)}</div>
+    <div class="ms-title">${title}</div>
+
+    <div class="ms-top">
+      <div class="ms-iconframe">${icon ? `<img src="${escapeHtml(icon)}" alt="">` : ""}</div>
+      <div class="ms-lines">
+        ${lines.map((s)=>`<div>${s}</div>`).join("")}
       </div>
-
-      <div class="sec">
-        <div class="sectitle">時裝屬性</div>
-        <div class="kvlist">${optHtml}</div>
-      </div>
-
-      ${(exp || exp2) ? `<div class="sec"><div class="sectitle">到期</div><div class="muted">${exp || ""}<br>${exp2 || ""}</div></div>` : ""}
-
-      <details class="sec">
-        <summary class="sectitle">原始資料（JSON）</summary>
-        <pre class="json">${escapeHtml(JSON.stringify(it, null, 2))}</pre>
-      </details>
     </div>
-  `;
+  </div>`;
 }
 
 function setupModalOnce() {
@@ -541,55 +785,34 @@ function setupModalOnce() {
   });
 }
 
-function initTooltipOnce() {
-  if (__tipInited) return;
-  __tipInited = true;
+function initItemModalOnce() {
+  if (window.__itemModalInited) return;
+  window.__itemModalInited = true;
 
-  const tip = $("tip");
-  const isEquipEl = (el) => el && el.classList && el.classList.contains("equip") && el.dataset && el.dataset.type && el.dataset.idx !== undefined;
+  // 點背景關閉、ESC 關閉
+  const modal = document.getElementById("modal");
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeItemModal();
+  });
+  modal.querySelector(".modal-x").addEventListener("click", (e) => {
+    e.preventDefault();
+    closeItemModal();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeItemModal();
+  });
 
-  function showTip(text) {
-    tip.textContent = text || "";
-    tip.style.display = "block";
-    positionTip(__lastPointer.x, __lastPointer.y);
-  }
-  function hideTip() { tip.style.display = "none"; }
-  function positionTip(x, y) {
-    if (tip.style.display === "none") return;
-    const pad = 14;
-    tip.style.left = (x + pad) + "px";
-    tip.style.top  = (y + pad) + "px";
-    const w = tip.offsetWidth, h = tip.offsetHeight;
-    let left = x + pad, top = y + pad;
-    if (left + w + pad > window.innerWidth) left = Math.max(pad, window.innerWidth - w - pad);
-    if (top + h + pad > window.innerHeight) top = Math.max(pad, window.innerHeight - h - pad);
-    tip.style.left = left + "px";
-    tip.style.top  = top + "px";
-  }
-
-  document.addEventListener("pointermove", (e) => {
-    __lastPointer = { x: e.clientX, y: e.clientY };
-    positionTip(e.clientX, e.clientY);
-  }, { passive: true });
-
-  document.addEventListener("pointerover", (e) => {
-    const el = e.target.closest(".equip[data-type][data-idx]");
-    if (!isEquipEl(el)) return;
+  // 點裝備 / 時裝就開啟 tooltip
+  document.addEventListener("click", (e) => {
+    const el = e.target.closest(".equip");
+    if (!el) return;
     const type = el.dataset.type;
-    const idx = Number(el.dataset.idx);
-    if (type === "equip") showTip(formatEquipTooltip(window.__equipItems[idx]));
-    else if (type === "cash") showTip(formatCashTooltip(window.__cashItems[idx]));
+    const idx = el.dataset.idx;
+    if (!type) return;
+    e.preventDefault();
+    e.stopPropagation();
+    openItemModal(type, idx, el);
   });
-
-  document.addEventListener("pointerout", (e) => {
-    const from = e.target.closest(".equip[data-type][data-idx]");
-    if (!isEquipEl(from)) return;
-    const to = e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest(".equip[data-type][data-idx]");
-    if (to && isEquipEl(to) && to === from) return;
-    hideTip();
-  });
-
-  window.addEventListener("scroll", hideTip, { passive: true });
 }
 
 function isZeroLike(v) {
@@ -610,86 +833,6 @@ function formatObjLines(obj, label, keyOrder = null) {
   }
   if (lines.length === 1) lines.push("- （無）");
   return lines;
-}
-function formatEquipTooltip(it) {
-  if (!it) return "（無裝備資料）";
-  const lines = [];
-  lines.push(`部位/格子：${it.item_equipment_part || ""} / ${it.item_equipment_slot || ""}`);
-  lines.push(`名稱：${it.item_name || ""}`);
-  if (it.item_description) lines.push(`描述：${it.item_description}`);
-  lines.push(`星力：${it.starforce ?? ""}｜卷數：${it.scroll_upgrade ?? ""}｜黃金鐵鎚：${it.golden_hammer_flag ?? ""}`);
-  lines.push(`剪刀：${it.cuttable_count ?? ""}｜可強化：${it.scroll_upgradeable_count ?? ""}｜回復卷：${it.scroll_resilience_count ?? ""}`);
-  if (it.item_shape_name || it.item_shape_icon) {
-    lines.push(`外觀：${it.item_shape_name || ""}`);
-    if (it.item_shape_icon) lines.push(`外觀Icon：${it.item_shape_icon}`);
-  }
-  lines.push("");
-  lines.push(`潛能等級：${it.potential_option_grade || "無"}`);
-  lines.push(`- 1: ${it.potential_option_1 || ""}`);
-  lines.push(`- 2: ${it.potential_option_2 || ""}`);
-  lines.push(`- 3: ${it.potential_option_3 || ""}`);
-  lines.push("");
-  lines.push(`附加潛能等級：${it.additional_potential_option_grade || "無"}`);
-  lines.push(`- 1: ${it.additional_potential_option_1 || ""}`);
-  lines.push(`- 2: ${it.additional_potential_option_2 || ""}`);
-  lines.push(`- 3: ${it.additional_potential_option_3 || ""}`);
-  if (it.soul_name || it.soul_option) {
-    lines.push("");
-    lines.push(`靈魂：${it.soul_name || ""}`);
-    lines.push(`靈魂能力：${it.soul_option || ""}`);
-  }
-  if (it.date_expire) {
-    lines.push("");
-    lines.push(`到期：${it.date_expire}`);
-  }
-
-  lines.push("");
-  lines.push(...formatObjLines(it.item_total_option, "總合屬性 item_total_option", [
-    "str","dex","int","luk","max_hp","max_mp","attack_power","magic_power","armor","speed","jump",
-    "boss_damage","ignore_monster_armor","all_stat","damage","equipment_level_decrease","max_hp_rate","max_mp_rate"
-  ]));
-  lines.push("");
-  lines.push(...formatObjLines(it.item_base_option, "基礎屬性 item_base_option"));
-  lines.push("");
-  lines.push(...formatObjLines(it.item_add_option, "附加屬性 item_add_option"));
-  lines.push("");
-  lines.push(...formatObjLines(it.item_etc_option, "其他屬性 item_etc_option"));
-  lines.push("");
-  lines.push(...formatObjLines(it.item_starforce_option, "星力屬性 item_starforce_option"));
-  lines.push("");
-  lines.push(...formatObjLines(it.item_exceptional_option, "卓越屬性 item_exceptional_option"));
-
-  if (it.growth_exp !== undefined || it.growth_level !== undefined) {
-    lines.push("");
-    lines.push(`成長：growth_level=${it.growth_level ?? ""}｜growth_exp=${it.growth_exp ?? ""}`);
-  }
-
-  lines.push("");
-  lines.push("========== 原始 JSON（完整） ==========");
-  lines.push(JSON.stringify(it, null, 2));
-  return lines.join("\n");
-}
-function formatCashTooltip(it) {
-  if (!it) return "（無時裝資料）";
-  const lines = [];
-  lines.push(`部位/格子：${it.cash_item_equipment_part || ""} / ${it.cash_item_equipment_slot || ""}`);
-  lines.push(`名稱：${it.cash_item_name || ""}`);
-  if (it.cash_item_description) lines.push(`描述：${it.cash_item_description}`);
-  if (it.item_gender) lines.push(`性別限制：${it.item_gender}`);
-  if (it.date_expire) lines.push(`到期：${it.date_expire}`);
-  if (it.date_option_expire) lines.push(`能力到期：${it.date_option_expire}`);
-
-  lines.push("");
-  lines.push("能力（cash_item_option）：");
-  if (Array.isArray(it.cash_item_option) && it.cash_item_option.length) {
-    for (const o of it.cash_item_option) lines.push(`- ${o.option_type || ""}: ${o.option_value || ""}`);
-  } else {
-    lines.push("- （無）");
-  }
-  lines.push("");
-  lines.push("========== 原始 JSON（完整） ==========");
-  lines.push(JSON.stringify(it, null, 2));
-  return lines.join("\n");
 }
 
 /** ===== Render ===== */
@@ -749,14 +892,14 @@ function renderMetric(name, val) {
 function renderEquip(e) {
   const arr = Array.isArray(e?.item_equipment) ? e.item_equipment : [];
   window.__equipItems = arr;
-  initTooltipOnce();
+  initItemModalOnce();
 
   const cells = arr.map((it, i) => {
     const icon = it.item_icon || it.item_shape_icon || "";
     const name = it.item_name || "";
     const star = it.starforce ? `★${it.starforce}` : "";
     return `
-      <div class="equip" data-type="equip" data-idx="${i}">
+      <div class="equip" role="button" tabindex="0" data-type="equip" data-idx="${i}">
         ${icon ? `<img src="${esc(icon)}" />` : `<div style="height:44px;"></div>`}
         <div class="ename">${esc(name)}</div>
         <div class="small">${esc(star)}</div>
@@ -794,13 +937,13 @@ function renderAbility(ability) {
 function renderCash(c) {
   const arr = Array.isArray(c?.cash_item_equipment_base) ? c.cash_item_equipment_base : [];
   window.__cashItems = arr;
-  initTooltipOnce();
+  initItemModalOnce();
 
   const cells = arr.map((it, i) => {
     const icon = it.cash_item_icon || "";
     const name = it.cash_item_name || "";
     return `
-      <div class="equip" data-type="cash" data-idx="${i}">
+      <div class="equip" role="button" tabindex="0" data-type="cash" data-idx="${i}">
         ${icon ? `<img src="${esc(icon)}" />` : `<div style="height:44px;"></div>`}
         <div class="ename">${esc(name)}</div>
         <div class="small">&nbsp;</div>
@@ -946,6 +1089,7 @@ document.addEventListener("keydown", (e)=> {
 
 // 預填（方便你測）
 if (!$("name").value) $("name").value = "Ezra絕";
+
 
 </script>
 </body>
