@@ -276,6 +276,18 @@ h1{margin:0 0 4px;font-size:22px;font-weight:800;letter-spacing:.2px;}
 .ms-buff.green{background:linear-gradient(90deg, #b8ff3a, #7cffd6);}
 .ms-buff.orange{background:linear-gradient(90deg, #ffb020, #ffd27a);}
 
+
+/* 內潛（依級別上色） */
+.ability-wrap{margin-top:8px;display:flex;flex-direction:column;gap:10px;}
+.ms-buff.blue{background:linear-gradient(0deg,#0b4a8f,#0f5fb8);}
+.ms-buff.purple{background:linear-gradient(0deg,#4a2a88,#6c44c8);}
+.ms-buff.gray{background:linear-gradient(0deg,#3a3f49,#4a5160);}
+
+/* 裝備數值配色：基本(白) + 星力(黃) + 卷軸(藍) + 星火(綠) */
+.c-base{color:rgba(255,255,255,.92);font-weight:700;}
+.c-star{color:#ffd35a;font-weight:800;}
+.c-scroll{color:#53b6ff;font-weight:800;}
+.c-flame{color:#7cff7c;font-weight:800;}
 </style>
 </head>
 <body>
@@ -650,22 +662,70 @@ function buildOptionLines_(label, totalObj, baseObj, addObj, etcObj, starObj, ex
 
 function buildEquipModalHtml_(it) {
   const star = Number(it.starforce || 0);
-  const starMax = 25;
+  const starMax = 30;
   const stars = renderStars_(star, starMax);
 
   const title = escapeHtml(`${it.item_name || ""}${it.starforce ? ` (+${it.starforce})` : ""}`);
 
   const icon = it.item_icon || "";
   const part = it.item_equipment_part || it.item_equipment_slot || "";
-
+  // ===== 數值（配色：基本(白) + 星力(黃) + 卷軸(藍) + 星火(綠)）=====
   const total = it.item_total_option || {};
-  const base = it.item_base_option || {};
-  const add = it.item_add_option || {};
-  const etc = it.item_etc_option || {};
+  const baseOpt = it.item_base_option || {};
   const starOpt = it.item_starforce_option || {};
-  const ex = it.item_exceptional_option || {};
+  const scrollOpt = it.item_etc_option || {};
+  const flameOpt = it.item_add_option || {};
+  const excOpt = it.item_exceptional_option || {};
 
+  const num = (v) => {
+    if (v === "" || v === null || v === undefined) return 0;
+    const s = String(v).replace(/,/g, "").trim();
+    if (!s) return 0;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : 0;
+  };
+  const isPctKey = (k) => ["all_stat","boss_damage","ignore_monster_armor","damage","max_hp_rate","max_mp_rate"].includes(k);
+
+  const fmtPart = (v, cls, pct) => {
+    const n = num(v);
+    if (!n) return "";
+    const txt = (Math.round(n * 100) / 100).toString() + (pct ? "%" : "");
+    return `<span class="${cls}">${txt}</span>`;
+  };
+
+  const fmtTotal = (v, pct) => {
+    const n = num(v);
+    if (!n) return "";
+    return "+" + (Math.round(n * 100) / 100).toString() + (pct ? "%" : "");
+  };
+
+  const buildLine = (label, key) => {
+    const pct = isPctKey(key);
+    const t = fmtTotal(total[key], pct);
+    if (!t) return "";
+
+    // 基本 = base + exceptional（白）
+    const baseN = num(baseOpt[key]) + num(excOpt[key]);
+    const parts = [];
+
+    if (baseN) parts.push(fmtPart(baseN, "c-base", pct));
+    const starP = fmtPart(starOpt[key], "c-star", pct);
+    const scrollP = fmtPart(scrollOpt[key], "c-scroll", pct);
+    const flameP = fmtPart(flameOpt[key], "c-flame", pct);
+
+    if (starP) parts.push(starP);
+    if (scrollP) parts.push(scrollP);
+    if (flameP) parts.push(flameP);
+
+    // 若剛好 baseN=0，但其他有值，仍顯示其他（不硬塞 0）
+    const sumParts = parts.length ? ` <span class="muted">(${parts.join(" + ")})</span>` : "";
+
+    return `${escapeHtml(label)}: ${t}${sumParts}`;
+  };
+
+  const lines = [];
   const keys = [
+    ["種類", null],
     ["STR", "str"],
     ["DEX", "dex"],
     ["INT", "int"],
@@ -674,39 +734,28 @@ function buildEquipModalHtml_(it) {
     ["最大MP", "max_mp"],
     ["攻擊力", "attack_power"],
     ["魔法攻擊力", "magic_power"],
-    ["防禦率", "armor"],
+    ["防禦力", "armor"],
     ["全屬性", "all_stat"],
-    ["傷害", "damage"],
     ["BOSS怪物傷害", "boss_damage"],
     ["無視怪物防禦率", "ignore_monster_armor"],
-    ["最終傷害", "final_damage"],
-    ["爆擊傷害", "critical_damage"],
   ];
-  const pctKeys = new Set(["all_stat","damage","boss_damage","ignore_monster_armor","final_damage","critical_damage"]);
 
-  const lines = [];
-  if (part) lines.push(`<div class="muted">種類：${escapeHtml(part)}</div>`);
-
-  for (const [label, k] of keys) {
-    const t = Number(total[k] || 0);
-    if (!t) continue;
-
-    const b = Number(base[k] || 0);
-    const a = Number(add[k] || 0);
-    const e = Number(etc[k] || 0);
-    const s = Number(starOpt[k] || 0);
-    const x = Number(ex[k] || 0);
-
-    const parts = [b, a, e, s, x].filter((v) => v);
-    const sumParts = parts.length ? parts.map((v) => fmtNum_(v, pctKeys.has(k))).join(" + ") : "";
-    const totalTxt = fmtNum_(t, pctKeys.has(k));
-
-    if (sumParts) {
-      lines.push(`${escapeHtml(label)}: ${totalTxt} <span class="muted">(${sumParts})</span>`);
-    } else {
-      lines.push(`${escapeHtml(label)}: ${totalTxt}`);
-    }
+  // 種類
+  if (it.item_equipment_part || it.item_equipment_slot) {
+    const partTxt = (it.item_equipment_part || it.item_equipment_slot || "").toString();
+    lines.push(`種類：${escapeHtml(partTxt)}`);
   }
+
+  for (const [label, key] of keys) {
+    if (!key) continue;
+    const l = buildLine(label, key);
+    if (l) lines.push(l);
+  }
+
+  const statBlock = lines.length
+    ? `<div class="ms-lines">${lines.map((x) => `<div class="ms-line">${x}</div>`).join("")}</div>`
+    : "";
+
 
   // 潛能
   const pot = renderPotentialBlock_(it.potential_option_grade, [it.potential_option_1, it.potential_option_2, it.potential_option_3], false);
@@ -919,20 +968,37 @@ function renderEquip(e) {
 
 function renderAbility(ability) {
   if (!ability) return "";
-  const grade = ability.ability_grade || "";
-  const lines = Array.isArray(ability.ability_info) ? ability.ability_info : [];
-  const items = lines
-    .slice(0, 3)
-    .map((x) => `<li>${escapeHtml(x.ability_value || "")}</li>`)
+
+  // Nexon 回傳：ability_info (目前套用) + ability_grade
+  const info = Array.isArray(ability.ability_info) ? ability.ability_info : [];
+  if (!info.length) return "";
+
+  const gradeToBuff = (g) => {
+    const s = String(g || "").trim();
+    if (s.includes("傳說")) return "green";
+    if (s.includes("名匠")) return "blue";
+    if (s.includes("獨特") || s.includes("特殊")) return "purple";
+    if (s.includes("史詩")) return "orange";
+    if (s.includes("罕見")) return "orange";
+    if (s.includes("稀有")) return "orange";
+    return "gray";
+  };
+
+  const rows = info
+    .filter((x) => x && x.ability_value)
+    .map((x) => {
+      const cls = gradeToBuff(x.ability_grade || ability.ability_grade);
+      return `<div class="ms-buff ${cls}">${escapeHtml(x.ability_value)}</div>`;
+    })
     .join("");
 
   return `
-    <div class="card full">
-      <div class="title">內潛（${escapeHtml(grade)}）</div>
-      <ul class="ability-list">${items || "<li>（無資料）</li>"}</ul>
-    </div>
-  `;
+<div class="sec">
+  <div class="sec-title"><span class="ico">👁️</span> 內潛</div>
+  <div class="ability-wrap">${rows}</div>
+</div>`;
 }
+
 
 function renderCash(c) {
   const arr = Array.isArray(c?.cash_item_equipment_base) ? c.cash_item_equipment_base : [];
