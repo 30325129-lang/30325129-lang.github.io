@@ -256,6 +256,8 @@ h1{margin:0 0 4px;font-size:22px;font-weight:800;letter-spacing:.2px;}
 .ms-bar.unique{background:linear-gradient(90deg, #ffd43a, #ffef7a);}
 .ms-bar.epic{background:linear-gradient(90deg, #a78bfa, #60a5fa);}
 .ms-bar.rare{background:linear-gradient(90deg, #60a5fa, #22d3ee);}
+.ms-bar.special{background:linear-gradient(90deg,#7dd3fc,#93c5fd);}
+.ms-bar.special .tag{background:rgba(125,211,252,.22);border:1px solid rgba(125,211,252,.55);}
 .ms-bar.common{background:linear-gradient(90deg, #94a3b8, #cbd5e1);}
 .ms-opt{
   margin-top:6px;
@@ -608,6 +610,7 @@ function potentialClass_(grade) {
   if (g.includes("罕見") || g.toLowerCase().includes("unique")) return "unique";
   if (g.includes("史詩") || g.toLowerCase().includes("epic")) return "epic";
   if (g.includes("稀有") || g.toLowerCase().includes("rare")) return "rare";
+  if (g.includes("特殊") || g.toLowerCase().includes("special")) return "special";
   return "common";
 }
 
@@ -618,6 +621,7 @@ function potentialTag_(grade) {
   if (g.includes("罕見") || g.toLowerCase().includes("unique")) return "U";
   if (g.includes("史詩") || g.toLowerCase().includes("epic")) return "E";
   if (g.includes("稀有") || g.toLowerCase().includes("rare")) return "R";
+  if (g.includes("特殊") || g.toLowerCase().includes("special")) return "C";
   return "C";
 }
 
@@ -836,7 +840,8 @@ function buildEquipModalHtml_(it) {
   const starMax = 30;
   const stars = renderStars_(star, starMax);
 
-  const title = escapeHtml(`${it.item_name || ""}${it.starforce ? ` (+${it.starforce})` : ""}`);
+  const scrollUsed = Number(it.scroll_upgrade || 0) || 0;
+  const title = escapeHtml(`${it.item_name || ""}${scrollUsed ? ` (+${scrollUsed})` : ""}`);
 
   const icon = it.item_icon || "";
   const part = it.item_equipment_part || it.item_equipment_slot || "";
