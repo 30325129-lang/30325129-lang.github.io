@@ -250,6 +250,20 @@ function formatPercent(v) {
   return s + "%";
 }
 
+
+
+/** ===== HTML 轉義（避免 XSS / 避免面板炸掉） ===== */
+function escapeHtml(input) {
+  const s = String(input ?? "");
+  return s.replace(/[&<>"']/g, (ch) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  }[ch]));
+}
+
 /** ===== 8 大數值抽取 ===== */
 function statArrayToMap(final_stat) {
   const map = {};
