@@ -2,364 +2,604 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Maple 角色查詢（Web）</title>
   <style>
-    body { font-family: system-ui,-apple-system,"Segoe UI",Arial; margin:0; background:#fafafa; }
-    .wrap { max-width: 1100px; margin: 0 auto; padding: 18px; }
-    .title { font-size: 20px; font-weight: 900; }
-    .muted { color:#666; font-size:12px; }
-    .row { display:flex; gap:10px; margin-top:12px; }
-    input { flex:1; padding:12px; border:1px solid #ddd; border-radius:12px; font-size:14px; }
-    button { padding:12px 14px; border:1px solid #111; background:#111; color:#fff; border-radius:12px; cursor:pointer; }
-    button:disabled { opacity:.6; cursor:not-allowed; }
-    .err { color:#c62828; white-space:pre-wrap; margin-top:10px; }
-    .card { background:#fff; border:1px solid #e9e9e9; border-radius:16px; padding:14px; margin:14px 0; }
-    .head { display:flex; gap:14px; align-items:center; }
-    .avatar { width:84px; height:84px; border-radius:18px; object-fit:cover; background:#eee; }
-    .name { font-size:22px; font-weight:1000; }
-    .grid { display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; margin-top:12px; }
-    .kv { border:1px solid #eee; border-radius:14px; padding:10px; }
-    .k { color:#666; font-size:12px; }
-    .v { font-weight:900; font-size:16px; margin-top:4px; word-break: break-all; }
-    .equip-grid { display:grid; grid-template-columns: repeat(10, 1fr); gap:8px; }
-    .equip { border:1px solid #eee; border-radius:14px; padding:8px; text-align:center; background:#fff; }
-    .equip img { width:44px; height:44px; object-fit:contain; display:block; margin:0 auto 6px; }
-    .equip .ename { font-size:11px; line-height:1.2; height: 30px; overflow:hidden; }
-    .tabs { display:flex; gap:10px; margin-top:10px; }
-    .tab { padding:10px 12px; border:1px solid #ddd; background:#fff; border-radius:12px; cursor:pointer; }
-    .tab.active { border-color:#111; font-weight:900; }
-    table { width:100%; border-collapse:collapse; }
-    th, td { padding:8px; border-bottom:1px solid #eee; text-align:left; font-size:13px; }
-    .pill { display:inline-block; padding:4px 8px; border:1px solid #eee; border-radius:999px; font-size:12px; color:#333; margin-right:6px; }
+    :root{--fg:#111;--muted:#666;--line:#e9e9e9;--card:#fff;--bg:#f6f7f9;}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;}
+    .wrap{max-width:1100px;margin:28px auto;padding:0 16px;}
+    h1{margin:0 0 6px;font-size:22px;font-weight:800;}
+    .sub{color:var(--muted);font-size:13px;margin-bottom:14px}
+    .search{display:flex;gap:10px;align-items:center}
+    input[type="text"]{flex:1;min-width:220px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:14px;outline:none;background:#fff}
+    button{border:0;background:#111;color:#fff;border-radius:10px;padding:11px 16px;font-size:14px;cursor:pointer}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .status{margin:10px 0 0;color:var(--muted);font-size:13px}
+    .row{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 14px;box-shadow:0 1px 0 rgba(0,0,0,.02)}
+    .card.big{flex:1;min-width:320px}
+    .card.full{width:100%}
+    .title{font-weight:800;margin:0 0 10px;font-size:16px}
+    .muted{color:var(--muted)}
+    .profile{display:flex;gap:12px;align-items:flex-start}
+    .avatar{width:68px;height:68px;border-radius:14px;background:#eee;flex:0 0 auto;object-fit:cover}
+    .pname{font-size:20px;font-weight:900;margin:0}
+    .pmeta{color:var(--muted);font-size:13px;line-height:1.4;margin-top:3px}
+    .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+    .chip{border:1px solid var(--line);background:#fafafa;border-radius:999px;padding:4px 10px;font-size:12px;color:#333}
+    .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
+    @media (max-width:860px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+    .metric{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff}
+    .mname{color:var(--muted);font-size:12px}
+    .mval{font-size:16px;font-weight:900;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .equip-grid{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:10px}
+    @media (max-width:1100px){.equip-grid{grid-template-columns:repeat(8,minmax(0,1fr));}}
+    @media (max-width:860px){.equip-grid{grid-template-columns:repeat(6,minmax(0,1fr));}}
+    @media (max-width:520px){.equip-grid{grid-template-columns:repeat(4,minmax(0,1fr));}}
+    .equip{border:1px solid var(--line);border-radius:14px;padding:10px 8px;text-align:center;background:#fff}
+    .equip img{width:44px;height:44px;image-rendering:pixelated;object-fit:contain}
+    .ename{font-size:12px;margin-top:6px;line-height:1.2;height:2.4em;overflow:hidden}
+    .tabs{display:flex;gap:8px;align-items:center;margin-top:10px}
+    .tab{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 10px;font-size:12px;color:#333;cursor:pointer}
+    .tab.active{background:#111;color:#fff;border-color:#111}
+    table{width:100%;border-collapse:collapse}
+    th,td{border-bottom:1px solid var(--line);padding:8px 8px;font-size:13px;text-align:left}
+    th{color:var(--muted);font-weight:700}
+    .right{text-align:right}
+    .small{font-size:12px;color:var(--muted)}
+    .err{color:#b00020;font-weight:700}
+
+    /* === Tooltip === */
+    .tooltip {
+      position: fixed;
+      z-index: 99999;
+      display: none;
+      max-width: 560px;
+      max-height: 70vh;
+      overflow: auto;
+      background: rgba(17,17,17,0.95);
+      color: #fff;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      line-height: 1.35;
+      white-space: pre-wrap;
+      box-shadow: 0 14px 35px rgba(0,0,0,.25);
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="title">Maple 角色查詢（Web）</div>
-    <div class="muted">
-      只輸入暱稱；日期自動查詢昨天（台北時間）；8大數值一個不漏；裝備/時裝圖片顯示。
-    </div>
+    <h1>Maple 角色查詢（Web）</h1>
+    <div class="sub">只輸入角色暱稱；日期自動查詢昨天（台灣時間）。戰鬥力顯示「億/萬」單位；BOSS傷/無視/爆傷/爆率/最終傷/傷害 皆自動加上 %。裝備/時裝滑鼠移到圖片即可看完整數值。</div>
 
-    <div class="row">
-      <input id="name" placeholder="輸入角色暱稱，例如：Ezra絕" />
+    <div class="search">
+      <input id="name" type="text" placeholder="輸入角色暱稱（例：Ezra絕）" />
       <button id="btn" onclick="run()">查詢</button>
     </div>
+    <div id="status" class="status">待命</div>
 
-    <div id="status" class="muted" style="margin-top:10px;"></div>
-    <div id="error" class="err"></div>
-
-    <div id="result"></div>
+    <div id="out" class="row"></div>
   </div>
 
+  <div id="tip" class="tooltip"></div>
+
 <script>
-/** ===== 你要打的 Worker ===== */
+/** ===== 基本設定 ===== */
 const WORKER_BASE = "https://maple-proxy.ezraop.workers.dev";
-const PARTS = "basic,popularity,stat,itemEquipment,cashitemEquipment,symbolEquipment";
+const DEFAULT_PARTS = "basic,popularity,stat,itemEquipment,cashitemEquipment,symbolEquipment";
+const TZ = "Asia/Taipei";
 
-/** ===== 工具 ===== */
+/** ===== DOM helper ===== */
 const $ = (id) => document.getElementById(id);
-function esc(s) {
-  return String(s ?? "")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#39;");
+const esc = (s) => String(s ?? "").replace(/[&<>\"']/g, (c)=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+/** ===== 日期（台灣）昨天 yyyy-mm-dd ===== */
+function getYesterdayYmdTz() {
+  const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year:"numeric", month:"2-digit", day:"2-digit" });
+  const parts = fmt.formatToParts(new Date());
+  const y = Number(parts.find(p=>p.type==="year").value);
+  const m = Number(parts.find(p=>p.type==="month").value);
+  const d = Number(parts.find(p=>p.type==="day").value);
+  const dt = new Date(Date.UTC(y, m-1, d));
+  dt.setUTCDate(dt.getUTCDate() - 1);
+  const y2 = dt.getUTCFullYear();
+  const m2 = String(dt.getUTCMonth()+1).padStart(2,"0");
+  const d2 = String(dt.getUTCDate()).padStart(2,"0");
+  return `${y2}-${m2}-${d2}`;
 }
 
-/** 台北時間昨天 yyyy-MM-dd（不管你電腦時區） */
-function getTaipeiYesterdayYmd() {
-  const now = Date.now();
-  const taipeiNow = new Date(now + 8 * 3600 * 1000);
-  const y = new Date(taipeiNow.getTime() - 24 * 3600 * 1000);
-  const yyyy = y.getUTCFullYear();
-  const mm = String(y.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(y.getUTCDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
+/** ===== BigInt 單位格式：億/萬 ===== */
+function formatZhUnit(nLike) {
+  const s0 = String(nLike ?? "").trim();
+  if (!s0) return "";
+  const s = s0.replace(/,/g,"");
+  if (!/^\d+$/.test(s)) return s0;
 
-function setStatus(msg){ $("status").textContent = msg || ""; }
-function setError(msg){ $("error").textContent = msg || ""; }
+  const n = BigInt(s);
+  const YI = 100000000n;
+  const WAN = 10000n;
 
-/** 把 final_stat 轉 map */
-function finalStatToMap(stat) {
-  const m = {};
-  const arr = stat?.final_stat;
-  if (!Array.isArray(arr)) return m;
-  for (const s of arr) {
-    if (s?.stat_name) m[s.stat_name] = s.stat_value;
+  function toFixed2(intPart, rem, base) {
+    const frac = (rem * 100n) / base;
+    const fracStr = String(frac).padStart(2,"0");
+    if (frac === 0n) return String(intPart);
+    return `${intPart}.${fracStr}`;
   }
-  return m;
+
+  if (n >= YI) {
+    const intPart = n / YI;
+    const rem = n % YI;
+    return toFixed2(intPart, rem, YI) + "億";
+  }
+  if (n >= WAN) {
+    const intPart = n / WAN;
+    const rem = n % WAN;
+    return toFixed2(intPart, rem, WAN) + "萬";
+  }
+  return s0;
 }
 
-/** 8 大欄位（缺一不可） */
+/** ===== % 顯示 ===== */
+function formatPercent(v) {
+  const s = String(v ?? "").trim();
+  if (!s) return "";
+  if (s.includes("%")) return s;
+  return s + "%";
+}
+
+/** ===== 8 大數值抽取 ===== */
+function statArrayToMap(final_stat) {
+  const map = {};
+  if (Array.isArray(final_stat)) {
+    for (const s of final_stat) {
+      if (s && s.stat_name) map[s.stat_name] = s.stat_value;
+    }
+  }
+  return map;
+}
+function pick(map, keys) {
+  for (const k of keys) {
+    const v = map[k];
+    if (v !== undefined && v !== null && String(v).trim() !== "") return v;
+  }
+  return "";
+}
 function extractMetrics(statMap) {
-  const pick = (keys) => {
-    for (const k of keys) {
-      const v = statMap[k];
-      if (v !== undefined && v !== null && v !== "") return v;
-    }
-    return "";
-  };
-  const boss = pick(["BOSS怪物傷害","Boss怪物傷害","boss怪物傷害"]);
+  const boss = pick(statMap, ["BOSS怪物傷害","Boss怪物傷害","boss怪物傷害"]);
   return {
-    combat_power: pick(["戰鬥力"]),
+    combat_power: pick(statMap, ["戰鬥力"]),
     boss_damage: boss,
-    ignore_def: pick(["無視防禦率"]),
-    crit_damage: pick(["爆擊傷害"]),
-    crit_rate: pick(["爆擊機率"]),
-    final_damage: pick(["最終傷害"]),
-    damage: pick(["傷害"]),
-    attack_power: pick(["攻擊力"]),
+    ignore_def: pick(statMap, ["無視防禦率"]),
+    crit_damage: pick(statMap, ["爆擊傷害"]),
+    crit_rate: pick(statMap, ["爆擊機率"]),
+    final_damage: pick(statMap, ["最終傷害"]),
+    damage: pick(statMap, ["傷害"]),
+    attack_power: pick(statMap, ["攻擊力"]),
   };
 }
 
-/** ===== local leaderboard：記錄「你查過的人」 ===== */
-const LS_KEY = "maple_char_cache_v1";
-function loadCache() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY) || "[]"); }
-  catch { return []; }
+/** ===== Local leaderboard（你查過的人）===== */
+const LB_KEY = "maple_lb_v1";
+function loadLB() {
+  try { return JSON.parse(localStorage.getItem(LB_KEY) || "[]"); } catch { return []; }
 }
-function saveCache(list) {
-  localStorage.setItem(LS_KEY, JSON.stringify(list));
+function saveLB(list) {
+  localStorage.setItem(LB_KEY, JSON.stringify(list.slice(0, 500)));
 }
-function upsertCache(entry) {
-  const list = loadCache();
+function upsertLB(entry) {
+  const list = loadLB();
   const key = `${entry.character_name}@@${entry.world_name}`;
-  const i = list.findIndex(x => `${x.character_name}@@${x.world_name}` === key);
-  if (i >= 0) list[i] = entry; else list.push(entry);
-  saveCache(list);
-  return list;
+  const idx = list.findIndex(x => `${x.character_name}@@${x.world_name}` === key);
+  if (idx >= 0) list[idx] = entry;
+  else list.push(entry);
+  list.sort((a,b)=> (b.fetched_at||"").localeCompare(a.fetched_at||""));
+  saveLB(list);
 }
-function toBigIntSafe(v) {
-  try {
-    if (v === "" || v === null || v === undefined) return 0n;
-    let s = String(v).trim();
-    if (!s) return 0n;
-    s = s.split(".")[0].replace(/[^\d-]/g,"");
-    if (!s || s === "-") return 0n;
-    return BigInt(s);
-  } catch { return 0n; }
-}
-function buildLeaderboard(list) {
-  const expTop = list.slice().sort((a,b)=>{
-    const A = toBigIntSafe(a.exp), B = toBigIntSafe(b.exp);
-    return A===B ? 0 : (A < B ? 1 : -1);
-  }).slice(0,50);
-
-  const combatTop = list.slice().sort((a,b)=>{
-    const A = toBigIntSafe(a.combat_power), B = toBigIntSafe(b.combat_power);
-    return A===B ? 0 : (A < B ? 1 : -1);
-  }).slice(0,50);
-
-  return { expTop, combatTop };
+function topByBigInt(field, limit=50) {
+  const list = loadLB();
+  const toBig = (v)=>{ try{ const s=String(v??"").replace(/,/g,"").trim(); return s?BigInt(s):0n; }catch{ return 0n; } };
+  return [...list].sort((a,b)=>{
+    const A = toBig(a[field]);
+    const B = toBig(b[field]);
+    return B > A ? 1 : B < A ? -1 : 0;
+  }).slice(0, limit);
 }
 
-/** ===== 主流程 ===== */
-async function run() {
-  const name = $("name").value.trim();
-  if (!name) { setError("請輸入角色暱稱"); return; }
+/** ===== Tooltip（滑過去顯示完整數值）===== */
+let __lastPointer = { x: 0, y: 0 };
+let __tipInited = false;
+window.__equipItems = [];
+window.__cashItems = [];
 
-  setError("");
-  setStatus("查詢中…（若 10~20 秒內沒回來，通常是 CORS 或 Worker/網路問題）");
-  $("btn").disabled = true;
+function initTooltipOnce() {
+  if (__tipInited) return;
+  __tipInited = true;
 
-  const date = getTaipeiYesterdayYmd();
-  const url = `${WORKER_BASE.replace(/\/+$/,"")}/character?name=${encodeURIComponent(name)}&date=${encodeURIComponent(date)}&parts=${encodeURIComponent(PARTS)}`;
+  const tip = $("tip");
+  const isEquipEl = (el) => el && el.classList && el.classList.contains("equip") && el.dataset && el.dataset.type && el.dataset.idx !== undefined;
 
-  // 超時保護
-  const ctrl = new AbortController();
-  const timer = setTimeout(()=>ctrl.abort(), 25000);
-
-  try {
-    const resp = await fetch(url, { method:"GET", signal: ctrl.signal });
-    const text = await resp.text();
-    let json;
-    try { json = JSON.parse(text); }
-    catch { throw new Error(`Worker 回傳不是 JSON（HTTP ${resp.status}）：${text.slice(0,300)}`); }
-
-    if (!json.ok) {
-      const msg = json?.body?.error?.message || `HTTP ${json.status || resp.status}`;
-      throw new Error(`查詢失敗：${msg}`);
-    }
-
-    const data = json.data || {};
-    const basic = data.basic || {};
-    const statMap = finalStatToMap(data.stat);
-    const metrics = extractMetrics(statMap);
-    const popularity = data.popularity?.popularity ?? "";
-
-    // 更新 local cache（做排行榜）
-    const fetched_at = new Date().toISOString();
-    const cacheList = upsertCache({
-      character_name: basic.character_name || name,
-      world_name: basic.world_name || "",
-      level: basic.character_level || "",
-      exp: basic.character_exp || "",
-      combat_power: metrics.combat_power || "",
-      fetched_at,
-      date,
-    });
-    const leaderboard = buildLeaderboard(cacheList);
-
-    render({
-      date,
-      basic,
-      popularity,
-      metrics,
-      itemEquipment: data.itemEquipment || null,
-      cashitemEquipment: data.cashitemEquipment || null,
-      leaderboard,
-    });
-
-    setStatus("完成 ✅");
-  } catch (e) {
-    const msg = (e && e.name === "AbortError")
-      ? "查詢逾時（25 秒）。可能 Worker 太慢 / 網路 / 或 CORS 被擋。"
-      : (e?.message || String(e));
-    setStatus("");
-    setError(msg + "\n\n（建議：按 F12 → Console 看是否有 CORS error）");
-  } finally {
-    clearTimeout(timer);
-    $("btn").disabled = false;
+  function showTip(text) {
+    tip.textContent = text || "";
+    tip.style.display = "block";
+    positionTip(__lastPointer.x, __lastPointer.y);
   }
+  function hideTip() { tip.style.display = "none"; }
+  function positionTip(x, y) {
+    if (tip.style.display === "none") return;
+    const pad = 14;
+    tip.style.left = (x + pad) + "px";
+    tip.style.top  = (y + pad) + "px";
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    let left = x + pad, top = y + pad;
+    if (left + w + pad > window.innerWidth) left = Math.max(pad, window.innerWidth - w - pad);
+    if (top + h + pad > window.innerHeight) top = Math.max(pad, window.innerHeight - h - pad);
+    tip.style.left = left + "px";
+    tip.style.top  = top + "px";
+  }
+
+  document.addEventListener("pointermove", (e) => {
+    __lastPointer = { x: e.clientX, y: e.clientY };
+    positionTip(e.clientX, e.clientY);
+  }, { passive: true });
+
+  document.addEventListener("pointerover", (e) => {
+    const el = e.target.closest(".equip[data-type][data-idx]");
+    if (!isEquipEl(el)) return;
+    const type = el.dataset.type;
+    const idx = Number(el.dataset.idx);
+    if (type === "equip") showTip(formatEquipTooltip(window.__equipItems[idx]));
+    else if (type === "cash") showTip(formatCashTooltip(window.__cashItems[idx]));
+  });
+
+  document.addEventListener("pointerout", (e) => {
+    const from = e.target.closest(".equip[data-type][data-idx]");
+    if (!isEquipEl(from)) return;
+    const to = e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest(".equip[data-type][data-idx]");
+    if (to && isEquipEl(to) && to === from) return;
+    hideTip();
+  });
+
+  window.addEventListener("scroll", hideTip, { passive: true });
 }
 
-function render(payload) {
-  const b = payload.basic || {};
-  const m = payload.metrics || {};
-  const img = b.character_image || "";
+function isZeroLike(v) {
+  const s = String(v ?? "").trim();
+  if (!s) return true;
+  return s === "0" || s === "0.0" || s === "0.00" || s === "0%" || s === "0.000" || s === "0.0000";
+}
+function formatObjLines(obj, label, keyOrder = null) {
+  if (!obj || typeof obj !== "object") return [];
+  const lines = [];
+  lines.push(label + "：");
+  const keys = Array.isArray(keyOrder) ? keyOrder : Object.keys(obj);
+  for (const k of keys) {
+    const v = obj[k];
+    if (v === undefined || v === null) continue;
+    if (isZeroLike(v)) continue;
+    lines.push(`- ${k}: ${v}`);
+  }
+  if (lines.length === 1) lines.push("- （無）");
+  return lines;
+}
+function formatEquipTooltip(it) {
+  if (!it) return "（無裝備資料）";
+  const lines = [];
+  lines.push(`部位/格子：${it.item_equipment_part || ""} / ${it.item_equipment_slot || ""}`);
+  lines.push(`名稱：${it.item_name || ""}`);
+  if (it.item_description) lines.push(`描述：${it.item_description}`);
+  lines.push(`星力：${it.starforce ?? ""}｜卷數：${it.scroll_upgrade ?? ""}｜黃金鐵鎚：${it.golden_hammer_flag ?? ""}`);
+  lines.push(`剪刀：${it.cuttable_count ?? ""}｜可強化：${it.scroll_upgradeable_count ?? ""}｜回復卷：${it.scroll_resilience_count ?? ""}`);
+  if (it.item_shape_name || it.item_shape_icon) {
+    lines.push(`外觀：${it.item_shape_name || ""}`);
+    if (it.item_shape_icon) lines.push(`外觀Icon：${it.item_shape_icon}`);
+  }
+  lines.push("");
+  lines.push(`潛能等級：${it.potential_option_grade || "無"}`);
+  lines.push(`- 1: ${it.potential_option_1 || ""}`);
+  lines.push(`- 2: ${it.potential_option_2 || ""}`);
+  lines.push(`- 3: ${it.potential_option_3 || ""}`);
+  lines.push("");
+  lines.push(`附加潛能等級：${it.additional_potential_option_grade || "無"}`);
+  lines.push(`- 1: ${it.additional_potential_option_1 || ""}`);
+  lines.push(`- 2: ${it.additional_potential_option_2 || ""}`);
+  lines.push(`- 3: ${it.additional_potential_option_3 || ""}`);
+  if (it.soul_name || it.soul_option) {
+    lines.push("");
+    lines.push(`靈魂：${it.soul_name || ""}`);
+    lines.push(`靈魂能力：${it.soul_option || ""}`);
+  }
+  if (it.date_expire) {
+    lines.push("");
+    lines.push(`到期：${it.date_expire}`);
+  }
 
-  const summary = `
-    <div class="card">
-      <div class="head">
+  lines.push("");
+  lines.push(...formatObjLines(it.item_total_option, "總合屬性 item_total_option", [
+    "str","dex","int","luk","max_hp","max_mp","attack_power","magic_power","armor","speed","jump",
+    "boss_damage","ignore_monster_armor","all_stat","damage","equipment_level_decrease","max_hp_rate","max_mp_rate"
+  ]));
+  lines.push("");
+  lines.push(...formatObjLines(it.item_base_option, "基礎屬性 item_base_option"));
+  lines.push("");
+  lines.push(...formatObjLines(it.item_add_option, "附加屬性 item_add_option"));
+  lines.push("");
+  lines.push(...formatObjLines(it.item_etc_option, "其他屬性 item_etc_option"));
+  lines.push("");
+  lines.push(...formatObjLines(it.item_starforce_option, "星力屬性 item_starforce_option"));
+  lines.push("");
+  lines.push(...formatObjLines(it.item_exceptional_option, "卓越屬性 item_exceptional_option"));
+
+  if (it.growth_exp !== undefined || it.growth_level !== undefined) {
+    lines.push("");
+    lines.push(`成長：growth_level=${it.growth_level ?? ""}｜growth_exp=${it.growth_exp ?? ""}`);
+  }
+
+  lines.push("");
+  lines.push("========== 原始 JSON（完整） ==========");
+  lines.push(JSON.stringify(it, null, 2));
+  return lines.join("\n");
+}
+function formatCashTooltip(it) {
+  if (!it) return "（無時裝資料）";
+  const lines = [];
+  lines.push(`部位/格子：${it.cash_item_equipment_part || ""} / ${it.cash_item_equipment_slot || ""}`);
+  lines.push(`名稱：${it.cash_item_name || ""}`);
+  if (it.cash_item_description) lines.push(`描述：${it.cash_item_description}`);
+  if (it.item_gender) lines.push(`性別限制：${it.item_gender}`);
+  if (it.date_expire) lines.push(`到期：${it.date_expire}`);
+  if (it.date_option_expire) lines.push(`能力到期：${it.date_option_expire}`);
+
+  lines.push("");
+  lines.push("能力（cash_item_option）：");
+  if (Array.isArray(it.cash_item_option) && it.cash_item_option.length) {
+    for (const o of it.cash_item_option) lines.push(`- ${o.option_type || ""}: ${o.option_value || ""}`);
+  } else {
+    lines.push("- （無）");
+  }
+  lines.push("");
+  lines.push("========== 原始 JSON（完整） ==========");
+  lines.push(JSON.stringify(it, null, 2));
+  return lines.join("\n");
+}
+
+/** ===== Render ===== */
+function renderProfile(basic, date, popularity, metrics) {
+  const expRate = basic.character_exp_rate ? formatPercent(basic.character_exp_rate) : "";
+  const expText = basic.character_exp ? String(basic.character_exp) : "";
+  const cls = basic.character_class || "";
+  const world = basic.world_name || "";
+  const level = basic.character_level ?? "";
+  const guild = basic.character_guild_name || "";
+
+  const img = basic.character_image || "";
+  const chips = [
+    world ? `伺服器：${world}` : "",
+    cls ? `職業：${cls}` : "",
+    level !== "" ? `Lv.${level}` : "",
+    guild ? `公會：${guild}` : "",
+    popularity !== "" ? `人氣：${popularity}` : "",
+    date ? `日期：${date}` : "",
+  ].filter(Boolean);
+
+  return `
+    <div class="card big">
+      <div class="profile">
         ${img ? `<img class="avatar" src="${esc(img)}" />` : `<div class="avatar"></div>`}
         <div>
-          <div class="name">${esc(b.character_name || "")}</div>
-          <div class="muted">${esc(b.world_name || "")}｜${esc(b.character_class || "")}｜Lv.${esc(b.character_level || "")}</div>
-          <div class="muted">
-            <span class="pill">日期：${esc(payload.date)}</span>
-            <span class="pill">人氣：${esc(payload.popularity)}</span>
+          <p class="pname">${esc(basic.character_name || "")}</p>
+          <div class="pmeta">
+            EXP：${esc(expText)} ${expRate ? `（${esc(expRate)}）` : ""}
           </div>
-          <div class="muted">EXP：${esc(b.character_exp || "")}（${esc(b.character_exp_rate || "")}%）</div>
+          <div class="chips">${chips.map(c=>`<span class="chip">${esc(c)}</span>`).join("")}</div>
         </div>
       </div>
 
       <div class="grid">
-        <div class="kv"><div class="k">戰鬥力</div><div class="v">${esc(m.combat_power)}</div></div>
-        <div class="kv"><div class="k">BOSS傷</div><div class="v">${esc(m.boss_damage)}</div></div>
-        <div class="kv"><div class="k">無視</div><div class="v">${esc(m.ignore_def)}</div></div>
-        <div class="kv"><div class="k">爆傷</div><div class="v">${esc(m.crit_damage)}</div></div>
-        <div class="kv"><div class="k">爆率</div><div class="v">${esc(m.crit_rate)}</div></div>
-        <div class="kv"><div class="k">最終傷</div><div class="v">${esc(m.final_damage)}</div></div>
-        <div class="kv"><div class="k">傷害</div><div class="v">${esc(m.damage)}</div></div>
-        <div class="kv"><div class="k">攻擊力</div><div class="v">${esc(m.attack_power)}</div></div>
+        ${renderMetric("戰鬥力", formatZhUnit(metrics.combat_power))}
+        ${renderMetric("BOSS傷", metrics.boss_damage ? formatPercent(metrics.boss_damage) : "")}
+        ${renderMetric("無視", metrics.ignore_def ? formatPercent(metrics.ignore_def) : "")}
+        ${renderMetric("爆傷", metrics.crit_damage ? formatPercent(metrics.crit_damage) : "")}
+        ${renderMetric("爆率", metrics.crit_rate ? formatPercent(metrics.crit_rate) : "")}
+        ${renderMetric("最終傷", metrics.final_damage ? formatPercent(metrics.final_damage) : "")}
+        ${renderMetric("傷害", metrics.damage ? formatPercent(metrics.damage) : "")}
+        ${renderMetric("攻擊力", metrics.attack_power || "")}
       </div>
     </div>
   `;
-
-  const equip = renderEquip(payload.itemEquipment);
-  const cash = renderCash(payload.cashitemEquipment);
-  const lb = renderLeaderboard(payload.leaderboard);
-
-  $("result").innerHTML = summary + equip + cash + lb;
+}
+function renderMetric(name, val) {
+  return `
+    <div class="metric">
+      <div class="mname">${esc(name)}</div>
+      <div class="mval">${esc(val || "-")}</div>
+    </div>
+  `;
 }
 
 function renderEquip(e) {
-  const items = e?.item_equipment;
-  const arr = Array.isArray(items) ? items : [];
-  const cells = arr.map(it => {
+  const arr = Array.isArray(e?.item_equipment) ? e.item_equipment : [];
+  window.__equipItems = arr;
+  initTooltipOnce();
+
+  const cells = arr.map((it, i) => {
     const icon = it.item_icon || it.item_shape_icon || "";
     const name = it.item_name || "";
     const star = it.starforce ? `★${it.starforce}` : "";
     return `
-      <div class="equip" title="${esc(name)}\n${esc(star)}">
+      <div class="equip" data-type="equip" data-idx="${i}">
         ${icon ? `<img src="${esc(icon)}" />` : `<div style="height:44px;"></div>`}
         <div class="ename">${esc(name)}</div>
-        <div class="muted">${esc(star)}</div>
+        <div class="small">${esc(star)}</div>
       </div>
     `;
   }).join("");
 
   return `
-    <div class="card">
-      <div class="title" style="font-size:16px;">裝備（equipped）</div>
-      <div class="muted" style="margin:6px 0 10px;">顯示裝備圖示（item_icon）。</div>
+    <div class="card full">
+      <div class="title">裝備（equipped）</div>
+      <div class="small" style="margin:6px 0 10px;">滑鼠移到圖片上可看完整數值（含原始 JSON）。</div>
       <div class="equip-grid">${cells || `<div class="muted">無資料</div>`}</div>
     </div>
   `;
 }
 
 function renderCash(c) {
-  const items = c?.cash_item_equipment_base;
-  const arr = Array.isArray(items) ? items : [];
-  const cells = arr.map(it => {
+  const arr = Array.isArray(c?.cash_item_equipment_base) ? c.cash_item_equipment_base : [];
+  window.__cashItems = arr;
+  initTooltipOnce();
+
+  const cells = arr.map((it, i) => {
     const icon = it.cash_item_icon || "";
     const name = it.cash_item_name || "";
     return `
-      <div class="equip" title="${esc(name)}">
+      <div class="equip" data-type="cash" data-idx="${i}">
         ${icon ? `<img src="${esc(icon)}" />` : `<div style="height:44px;"></div>`}
         <div class="ename">${esc(name)}</div>
+        <div class="small">&nbsp;</div>
       </div>
     `;
   }).join("");
 
   return `
-    <div class="card">
-      <div class="title" style="font-size:16px;">時裝（base）</div>
-      <div class="muted" style="margin:6px 0 10px;">顯示時裝圖示（cash_item_icon）。</div>
+    <div class="card full">
+      <div class="title">時裝（base）</div>
+      <div class="small" style="margin:6px 0 10px;">滑鼠移到圖片上可看完整數值（含原始 JSON）。</div>
       <div class="equip-grid">${cells || `<div class="muted">無資料</div>`}</div>
     </div>
   `;
 }
 
-function renderLeaderboard(lb) {
-  const exp = Array.isArray(lb?.expTop) ? lb.expTop : [];
-  const combat = Array.isArray(lb?.combatTop) ? lb.combatTop : [];
+function renderLeaderboard() {
+  const expTop = topByBigInt("exp", 50);
+  const combatTop = topByBigInt("combat_power", 50);
 
-  const table = (rows, mode) => {
-    if (!rows.length) return `<div class="muted" style="margin-top:10px;">尚無資料（先查幾個角色）</div>`;
-    const th = mode === "exp"
-      ? `<tr><th>#</th><th>角色</th><th>伺服器</th><th>Lv</th><th>EXP</th></tr>`
-      : `<tr><th>#</th><th>角色</th><th>伺服器</th><th>Lv</th><th>戰鬥力</th></tr>`;
-    const body = rows.map((r,i)=> mode==="exp"
-      ? `<tr><td>${i+1}</td><td>${esc(r.character_name)}</td><td>${esc(r.world_name)}</td><td>${esc(r.level)}</td><td>${esc(r.exp)}</td></tr>`
-      : `<tr><td>${i+1}</td><td>${esc(r.character_name)}</td><td>${esc(r.world_name)}</td><td>${esc(r.level)}</td><td>${esc(r.combat_power)}</td></tr>`
-    ).join("");
-    return `<table>${th}${body}</table>`;
-  };
+  const table = (rows, type) => `
+    <table>
+      <thead>
+        <tr>
+          <th class="right">#</th>
+          <th>角色</th>
+          <th>伺服器</th>
+          <th class="right">${type==="exp"?"EXP":"戰鬥力"}</th>
+          <th class="right">Lv</th>
+          <th class="right">更新時間</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map((r,i)=>`
+          <tr>
+            <td class="right">${i+1}</td>
+            <td>${esc(r.character_name||"")}</td>
+            <td>${esc(r.world_name||"")}</td>
+            <td class="right">${type==="exp"?esc(r.exp||""):esc(formatZhUnit(r.combat_power||""))}</td>
+            <td class="right">${esc(r.level||"")}</td>
+            <td class="right">${esc(r.fetched_at||"")}</td>
+          </tr>
+        `).join("") || `<tr><td colspan="6" class="muted">尚無資料（先查詢幾個角色）</td></tr>`}
+      </tbody>
+    </table>
+  `;
 
   return `
-    <div class="card">
-      <div class="title" style="font-size:16px;">排行榜（你查過的人，本機記錄）</div>
+    <div class="card full">
+      <div class="title">排行榜（以你查過的角色為準）</div>
       <div class="tabs">
-        <button class="tab active" id="tExp" onclick="showLB('exp')">EXP</button>
-        <button class="tab" id="tCombat" onclick="showLB('combat')">戰鬥力</button>
+        <button class="tab active" id="tabExp" onclick="switchTab('exp')">經驗值排行榜</button>
+        <button class="tab" id="tabCombat" onclick="switchTab('combat')">戰鬥力排行榜</button>
+        <span class="small">（資料存在瀏覽器 localStorage）</span>
       </div>
-      <div id="lbExp">${table(exp,"exp")}</div>
-      <div id="lbCombat" style="display:none;">${table(combat,"combat")}</div>
+      <div id="lbExp" style="margin-top:10px;">${table(expTop, "exp")}</div>
+      <div id="lbCombat" style="margin-top:10px; display:none;">${table(combatTop, "combat")}</div>
     </div>
   `;
 }
 
-function showLB(type) {
-  const expEl = document.getElementById("lbExp");
-  const combatEl = document.getElementById("lbCombat");
-  const tExp = document.getElementById("tExp");
-  const tCombat = document.getElementById("tCombat");
-  if (type === "exp") {
-    expEl.style.display = "";
-    combatEl.style.display = "none";
-    tExp.classList.add("active");
-    tCombat.classList.remove("active");
+function switchTab(which) {
+  const a = $("tabExp"), b = $("tabCombat");
+  const exp = $("lbExp"), combat = $("lbCombat");
+  if (which === "exp") {
+    a.classList.add("active"); b.classList.remove("active");
+    exp.style.display = "block"; combat.style.display = "none";
   } else {
-    expEl.style.display = "none";
-    combatEl.style.display = "";
-    tCombat.classList.add("active");
-    tExp.classList.remove("active");
+    b.classList.add("active"); a.classList.remove("active");
+    combat.style.display = "block"; exp.style.display = "none";
   }
 }
+
+/** ===== 主流程 ===== */
+async function run() {
+  const name = $("name").value.trim();
+  if (!name) {
+    $("status").innerHTML = `<span class="err">請輸入角色暱稱</span>`;
+    return;
+  }
+
+  $("btn").disabled = true;
+  $("status").textContent = "查詢中…";
+  $("out").innerHTML = "";
+
+  const date = getYesterdayYmdTz();
+  const url = `${WORKER_BASE.replace(/\/+$/,"")}/character?name=${encodeURIComponent(name)}&date=${encodeURIComponent(date)}&parts=${encodeURIComponent(DEFAULT_PARTS)}`;
+
+  try {
+    const t0 = performance.now();
+    const resp = await fetch(url, { method:"GET", cache:"no-store" });
+    const text = await resp.text();
+    let json;
+    try { json = JSON.parse(text); } catch(e) {
+      throw new Error(`Worker 回傳不是 JSON：${text.slice(0,200)}`);
+    }
+    if (!json.ok) {
+      const msg = json?.body?.error?.message || `HTTP ${json.status || resp.status}`;
+      throw new Error(msg);
+    }
+
+    const data = json.data || {};
+    const basic = data.basic || {};
+    const popularity = data.popularity?.popularity ?? "";
+    const statMap = statArrayToMap(data.stat?.final_stat);
+    const metrics = extractMetrics(statMap);
+
+    const now = new Date();
+    const fetched_at = now.toLocaleString("zh-TW", { hour12:false, timeZone: TZ });
+    upsertLB({
+      character_name: basic.character_name || name,
+      world_name: basic.world_name || "",
+      class: basic.character_class || "",
+      level: basic.character_level ?? "",
+      exp: basic.character_exp ?? "",
+      combat_power: metrics.combat_power ?? "",
+      date,
+      fetched_at,
+    });
+
+    const t1 = performance.now();
+    $("status").textContent = `完成（耗時 ${(t1-t0)/1000.0 >= 1 ? ((t1-t0)/1000).toFixed(2)+'s' : Math.round(t1-t0)+'ms'}）`;
+
+    $("out").innerHTML =
+      renderProfile(basic, date, popularity, metrics) +
+      renderEquip(data.itemEquipment) +
+      renderCash(data.cashitemEquipment) +
+      renderLeaderboard();
+
+  } catch (err) {
+    $("status").innerHTML = `<span class="err">查詢失敗：${esc(err?.message || String(err))}</span>`;
+    $("out").innerHTML = renderLeaderboard();
+  } finally {
+    $("btn").disabled = false;
+  }
+}
+
+// Enter 送出
+document.addEventListener("keydown", (e)=> {
+  if (e.key === "Enter" && document.activeElement === $("name")) run();
+});
+
+// 預填（方便你測）
+if (!$("name").value) $("name").value = "Ezra絕";
 </script>
 </body>
 </html>
