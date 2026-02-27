@@ -253,11 +253,13 @@ h1{margin:0 0 4px;font-size:22px;font-weight:800;letter-spacing:.2px;}
   border:1px solid rgba(0,0,0,.18);
 }
 .ms-bar.legendary{background:linear-gradient(90deg, #c7ff3a, #7cffd6);}
-.ms-bar.unique{background:linear-gradient(90deg, #ffd43a, #ffef7a);}
-.ms-bar.epic{background:linear-gradient(90deg, #a78bfa, #60a5fa);}
-.ms-bar.rare{background:linear-gradient(90deg, #60a5fa, #22d3ee);}
-.ms-bar.special{background:linear-gradient(90deg,#7dd3fc,#93c5fd);}
+.ms-bar.unique{background:linear-gradient(90deg, #ffb020, #ffd27a);} /* 罕見 */
+.ms-bar.epic{background:linear-gradient(90deg,#7dd3fc,#93c5fd);} /* 史詩/特殊（保留舊class） */
+.ms-bar.rare{background:linear-gradient(90deg, #a78bfa, #6c44c8);} /* 稀有/附加稀有 */
+.ms-bar.special{background:linear-gradient(90deg,#7dd3fc,#93c5fd);} /* 特殊/特殊級 */
 .ms-bar.special .tag{background:rgba(125,211,252,.22);border:1px solid rgba(125,211,252,.55);}
+.ms-bar.rare .tag{background:rgba(167,139,250,.18);border:1px solid rgba(167,139,250,.55);}
+.ms-bar.unique .tag{background:rgba(255,176,32,.18);border:1px solid rgba(255,176,32,.55);}
 .ms-bar.common{background:linear-gradient(90deg, #94a3b8, #cbd5e1);}
 .ms-opt{
   margin-top:6px;
@@ -606,11 +608,12 @@ function fmtNum_(v, isPct) {
 function potentialClass_(grade) {
   const g = String(grade || "").trim();
   if (!g) return "common";
+
+  // 依你指定：傳說=綠、罕見=橘、特殊/特殊級=淺藍、稀有/附加稀有=紫
   if (g.includes("傳說") || g.toLowerCase().includes("legend")) return "legendary";
   if (g.includes("罕見") || g.toLowerCase().includes("unique")) return "unique";
-  if (g.includes("史詩") || g.toLowerCase().includes("epic")) return "epic";
+  if (g.includes("特殊級") || g.includes("特殊") || g.includes("史詩") || g.toLowerCase().includes("epic") || g.toLowerCase().includes("special")) return "special";
   if (g.includes("稀有") || g.toLowerCase().includes("rare")) return "rare";
-  if (g.includes("特殊") || g.toLowerCase().includes("special")) return "special";
   return "common";
 }
 
@@ -619,9 +622,8 @@ function potentialTag_(grade) {
   if (!g) return "C";
   if (g.includes("傳說") || g.toLowerCase().includes("legend")) return "L";
   if (g.includes("罕見") || g.toLowerCase().includes("unique")) return "U";
-  if (g.includes("史詩") || g.toLowerCase().includes("epic")) return "E";
+  if (g.includes("特殊級") || g.includes("特殊") || g.includes("史詩") || g.toLowerCase().includes("epic") || g.toLowerCase().includes("special")) return "C";
   if (g.includes("稀有") || g.toLowerCase().includes("rare")) return "R";
-  if (g.includes("特殊") || g.toLowerCase().includes("special")) return "C";
   return "C";
 }
 
@@ -675,34 +677,210 @@ function extractMetrics(statMap) {
   };
 }
 
-/** ===== Local leaderboard（你查過的人）===== */
-const LB_KEY = "maple_lb_v1";
-function loadLB() {
-  try { return JSON.parse(localStorage.getItem(LB_KEY) || "[]"); } catch { return []; }
-}
-function saveLB(list) {
-  localStorage.setItem(LB_KEY, JSON.stringify(list.slice(0, 500)));
-}
-function upsertLB(entry) {
-  const list = loadLB();
-  const key = `${entry.character_name}@@${entry.world_name}`;
-  const idx = list.findIndex(x => `${x.character_name}@@${x.world_name}` === key);
-  if (idx >= 0) list[idx] = entry;
-  else list.push(entry);
-  list.sort((a,b)=> (b.fetched_at||"").localeCompare(a.fetched_at||""));
-  saveLB(list);
-}
-function topByBigInt(field, limit=50) {
-  const list = loadLB();
-  const toBig = (v)=>{ try{ const s=String(v??"").replace(/,/g,"").trim(); return s?BigInt(s):0n; }catch{ return 0n; } };
-  return [...list].sort((a,b)=>{
-    const A = toBig(a[field]);
-    const B = toBig(b[field]);
-    return B > A ? 1 : B < A ? -1 : 0;
-  }).slice(0, limit);
+/** ===== Leaderboard（全網共用 Google Sheet）===== */
+const SHEET_ID = "1XTOyTA5m9EamrEg8BKAFJAZenRnxBA1kPMYLqQtM63s";
+const SHEET_NAME = "characters";
+const LB_LIMIT = 50;
+const LB_CACHE_MS = 60 * 1000;
+
+let __lbCache = { at: 0, rows: null };
+let __lbLoading = false;
+
+function gvizJsonp_(sheetName, tq = "") {
+  return new Promise((resolve, reject) => {
+    const cb = "__gviz_cb_" + Math.random().toString(36).slice(2);
+    const script = document.createElement("script");
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error("排行榜載入逾時"));
+    }, 15000);
+
+    window[cb] = (resp) => {
+      cleanup();
+      resolve(resp);
+    };
+
+    const tqx = `out:json;responseHandler:${cb}`;
+    const base = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq`;
+    const url = `${base}?sheet=${encodeURIComponent(sheetName)}&tq=${encodeURIComponent(tq)}&tqx=${encodeURIComponent(tqx)}&headers=1`;
+
+    script.src = url;
+    script.async = true;
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("排行榜載入失敗（網路或試算表權限）"));
+    };
+    document.head.appendChild(script);
+
+    function cleanup() {
+      clearTimeout(timeout);
+      try { delete window[cb]; } catch(e) { window[cb] = undefined; }
+      if (script && script.parentNode) script.parentNode.removeChild(script);
+    }
+  });
 }
 
-/** ===== Tooltip（點一下顯示完整數值（點背景可關閉））===== */
+function gvizToObjects_(resp) {
+  try {
+    const table = resp && resp.table;
+    const cols = (table && table.cols) || [];
+    const rows = (table && table.rows) || [];
+    const headers = cols.map((c, i) => (c && (c.label || c.id)) || `col_${i}`);
+
+    return rows.map((r) => {
+      const obj = {};
+      const cells = (r && r.c) || [];
+      for (let i = 0; i < headers.length; i++) {
+        const cell = cells[i];
+        obj[headers[i]] = (cell && cell.v !== undefined) ? cell.v : "";
+      }
+      return obj;
+    });
+  } catch (e) {
+    return [];
+  }
+}
+
+function pickField_(obj, candidates) {
+  for (const k of candidates) {
+    if (obj && Object.prototype.hasOwnProperty.call(obj, k)) return obj[k];
+  }
+  // case-insensitive fallback
+  const keys = obj ? Object.keys(obj) : [];
+  for (const cand of candidates) {
+    const found = keys.find(k => k.toLowerCase() === String(cand).toLowerCase());
+    if (found) return obj[found];
+  }
+  return "";
+}
+
+function parseZhUnitToBigInt_(s) {
+  // 支援：65億4321萬2345 / 65億4321萬 / 4321萬2345 / 12345
+  try {
+    let str = String(s || "").replace(/,/g, "").trim();
+    if (!str) return 0n;
+
+    let total = 0n;
+
+    const yiMatch = str.match(/^(\d+)\s*億/);
+    if (yiMatch) {
+      total += BigInt(yiMatch[1]) * 100000000n;
+      str = str.slice(yiMatch[0].length);
+    }
+
+    const wanMatch = str.match(/^(\d+)\s*萬/);
+    if (wanMatch) {
+      total += BigInt(wanMatch[1]) * 10000n;
+      str = str.slice(wanMatch[0].length);
+    }
+
+    const remMatch = str.match(/^(\d+)/);
+    if (remMatch) total += BigInt(remMatch[1]);
+
+    return total;
+  } catch (e) {
+    return 0n;
+  }
+}
+
+function parseBigInt_(v) {
+  if (v === null || v === undefined) return 0n;
+  if (typeof v === "number" && Number.isFinite(v)) return BigInt(Math.floor(v));
+  const s0 = String(v).trim();
+  if (!s0) return 0n;
+
+  const s = s0.replace(/,/g, "").trim();
+  if (/[億萬]/.test(s)) return parseZhUnitToBigInt_(s);
+
+  if (/^\d+$/.test(s)) {
+    try { return BigInt(s); } catch (e) { return 0n; }
+  }
+
+  const n = Number(s);
+  if (Number.isFinite(n)) return BigInt(Math.floor(n));
+  return 0n;
+}
+
+function normalizeLbRow_(raw) {
+  const name = pickField_(raw, ["character_name", "name", "角色", "角色名稱", "character"]);
+  const world = pickField_(raw, ["world_name", "world", "伺服器", "server"]);
+  const level = pickField_(raw, ["level", "Lv", "lv", "等級"]);
+  const exp = pickField_(raw, ["exp", "EXP", "experience", "經驗", "經驗值"]);
+  const combat = pickField_(raw, ["combat_power", "combat", "power", "戰鬥力", "combatPower", "combat_power_raw"]);
+  const updated = pickField_(raw, ["fetched_at", "updated_at", "updatedAt", "timestamp", "更新時間", "日期", "date"]);
+
+  return {
+    character_name: name || "",
+    world_name: world || "",
+    level: level || "",
+    exp: exp || "",
+    combat_power: combat || "",
+    fetched_at: updated || "",
+  };
+}
+
+async function getSharedLeaderboardRows_() {
+  const now = Date.now();
+  if (__lbCache.rows && (now - __lbCache.at) < LB_CACHE_MS) return __lbCache.rows;
+
+  const resp = await gvizJsonp_(SHEET_NAME, "select *");
+  const objs = gvizToObjects_(resp);
+
+  const rows = objs
+    .map(normalizeLbRow_)
+    .filter(r => String(r.character_name || "").trim());
+
+  __lbCache = { at: now, rows };
+  return rows;
+}
+
+function sortTop_(rows, field) {
+  const arr = [...(rows || [])];
+  arr.sort((a, b) => {
+    const A = parseBigInt_(a[field]);
+    const B = parseBigInt_(b[field]);
+    if (B > A) return 1;
+    if (B < A) return -1;
+    return String(b.fetched_at || "").localeCompare(String(a.fetched_at || ""));
+  });
+  return arr.slice(0, LB_LIMIT);
+}
+
+function renderLbTable_(rows, type) {
+  const isExp = type === "exp";
+  const headVal = isExp ? "EXP" : "戰鬥力";
+  const body = (rows || []).map((r, i) => {
+    const val = isExp ? String(r.exp || "") : formatZhUnit(r.combat_power || "");
+    return `
+      <tr>
+        <td class="right">${i + 1}</td>
+        <td>${esc(r.character_name || "")}</td>
+        <td>${esc(r.world_name || "")}</td>
+        <td class="right">${esc(val || "")}</td>
+        <td class="right">${esc(r.level || "")}</td>
+        <td class="right">${esc(r.fetched_at || "")}</td>
+      </tr>
+    `;
+  }).join("");
+
+  return `
+    <table>
+      <thead>
+        <tr>
+          <th class="right">#</th>
+          <th>角色</th>
+          <th>伺服器</th>
+          <th class="right">${headVal}</th>
+          <th class="right">Lv</th>
+          <th class="right">更新時間</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${body || `<tr><td colspan="6" class="muted">尚無資料</td></tr>`}
+      </tbody>
+    </table>
+  `;
+}/** ===== Tooltip（點一下顯示完整數值（點背景可關閉））===== */
 let __lastPointer = { x: 0, y: 0 };
 let __tipInited = false;
 window.__equipItems = [];
@@ -1491,48 +1669,52 @@ function renderInvSlotExtra_(idx, items, kind){
 
 
 function renderLeaderboard() {
-  const expTop = topByBigInt("exp", 50);
-  const combatTop = topByBigInt("combat_power", 50);
-
-  const table = (rows, type) => `
-    <table>
-      <thead>
-        <tr>
-          <th class="right">#</th>
-          <th>角色</th>
-          <th>伺服器</th>
-          <th class="right">${type==="exp"?"EXP":"戰鬥力"}</th>
-          <th class="right">Lv</th>
-          <th class="right">更新時間</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rows.map((r,i)=>`
-          <tr>
-            <td class="right">${i+1}</td>
-            <td>${esc(r.character_name||"")}</td>
-            <td>${esc(r.world_name||"")}</td>
-            <td class="right">${type==="exp"?esc(r.exp||""):esc(formatZhUnit(r.combat_power||""))}</td>
-            <td class="right">${esc(r.level||"")}</td>
-            <td class="right">${esc(r.fetched_at||"")}</td>
-          </tr>
-        `).join("") || `<tr><td colspan="6" class="muted">尚無資料（先查詢幾個角色）</td></tr>`}
-      </tbody>
-    </table>
-  `;
-
+  // 先渲染外殼，實際資料用 Google gviz JSONP 非同步載入（避開 CORS，GitHub Pages 可用）
   return `
     <div class="card full">
-      <div class="title">排行榜（以你查過的角色為準）</div>
+      <div class="title">排行榜（全網共用）</div>
       <div class="tabs">
-        <button class="tab active" id="tabExp" onclick="switchTab('exp')">經驗值排行榜</button>
-        <button class="tab" id="tabCombat" onclick="switchTab('combat')">戰鬥力排行榜</button>
-        <span class="small">（資料存在瀏覽器 localStorage）</span>
+        <button class="tab active" id="tabExp" onclick="switchTab('exp')">EXP Top</button>
+        <button class="tab" id="tabCombat" onclick="switchTab('combat')">戰鬥力 Top</button>
+        <span class="small">（資料來源：共用 Google Sheet）</span>
       </div>
-      <div id="lbExp" style="margin-top:10px;">${table(expTop, "exp")}</div>
-      <div id="lbCombat" style="margin-top:10px; display:none;">${table(combatTop, "combat")}</div>
+      <div id="lbStatus" class="small" style="margin-top:8px;color:var(--muted)">載入中…</div>
+      <div id="lbExp" style="margin-top:10px;"></div>
+      <div id="lbCombat" style="margin-top:10px; display:none;"></div>
     </div>
   `;
+}
+
+async function ensureLeaderboardLoaded_() {
+  const hostExp = document.getElementById("lbExp");
+  const hostCombat = document.getElementById("lbCombat");
+  const st = document.getElementById("lbStatus");
+  if (!hostExp || !hostCombat) return;
+
+  if (__lbLoading) return;
+  __lbLoading = true;
+
+  try {
+    if (st) st.textContent = "載入中…";
+    const rows = await getSharedLeaderboardRows_();
+    const expTop = sortTop_(rows, "exp");
+    const combatTop = sortTop_(rows, "combat_power");
+
+    hostExp.innerHTML = renderLbTable_(expTop, "exp");
+    hostCombat.innerHTML = renderLbTable_(combatTop, "combat");
+
+    if (st) {
+      const ts = __lbCache.at ? new Date(__lbCache.at) : new Date();
+      st.textContent = `已載入 ${rows.length} 筆（快取 ${Math.round(LB_CACHE_MS/1000)} 秒｜${ts.toLocaleString("zh-TW", { timeZone: TZ })}）`;
+    }
+  } catch (err) {
+    const msg = String(err && err.message ? err.message : err);
+    if (st) st.textContent = `載入失敗：${msg}`;
+    hostExp.innerHTML = `<div class="muted">（無法載入排行榜）</div>`;
+    hostCombat.innerHTML = hostExp.innerHTML;
+  } finally {
+    __lbLoading = false;
+  }
 }
 
 function switchTab(which) {
@@ -1581,19 +1763,6 @@ async function run() {
     const statMap = statArrayToMap(data.stat?.final_stat);
     const metrics = extractMetrics(statMap);
 
-    const now = new Date();
-    const fetched_at = fmtTs(now);
-    upsertLB({
-      character_name: basic.character_name || name,
-      world_name: basic.world_name || "",
-      class: basic.character_class || "",
-      level: basic.character_level ?? "",
-      exp: basic.character_exp ?? "",
-      combat_power: metrics.combat_power ?? "",
-      date,
-      fetched_at,
-    });
-
     const t1 = performance.now();
     $("status").textContent = `完成（耗時 ${(t1-t0)/1000.0 >= 1 ? ((t1-t0)/1000).toFixed(2)+'s' : Math.round(t1-t0)+'ms'}）`;
 
@@ -1605,9 +1774,12 @@ async function run() {
 
     initInventoryUI_(basic, data.itemEquipment, data.cashitemEquipment);
 
+    ensureLeaderboardLoaded_();
+
   } catch (err) {
     $("status").innerHTML = `<span class="err">查詢失敗：${esc(err?.message || String(err))}</span>`;
     $("out").innerHTML = renderLeaderboard();
+    ensureLeaderboardLoaded_();
   } finally {
     $("btn").disabled = false;
   }
@@ -1620,6 +1792,9 @@ document.addEventListener("keydown", (e)=> {
 
 // 預填（方便你測）
 if (!$("name").value) $("name").value = "Ezra絕";
+
+// v10：立刻掛上裝備詳細視窗（X / 點黑幕 / ESC）事件
+initItemModalOnce();
 
 
 
@@ -1636,8 +1811,9 @@ function renderAbility(data){
   const gradeToClass = (grade)=>{
     const g = String(grade||"");
     if(g.includes("傳說")) return "green";
-    if(g.includes("特殊")) return "cyan"; // 特殊 / 特殊級 都算
-    if(g.includes("罕見") || g.includes("稀有")) return "orange";
+    if(g.includes("罕見")) return "orange";
+    if(g.includes("特殊級") || g.includes("特殊") || g.includes("史詩")) return "cyan";
+    if(g.includes("稀有")) return "purple";
     return "gray";
   };
   const htmlLines = lines.map(li=>{
