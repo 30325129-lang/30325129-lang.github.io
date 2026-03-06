@@ -2,169 +2,41 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>經驗值 / 戰力 / 職業排名查詢｜新楓之谷（挑戰者等伺服器）</title>
-  <meta name="description" content="提供新楓之谷（含挑戰者等伺服器）角色經驗值、戰力、職業內排名查詢與前 100 名榜單，支援分享連結與搜尋紀錄。" />
-  <style>
-    body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC","Microsoft JhengHei",sans-serif;margin:24px;line-height:1.7;color:#111827}
-    a{color:#111827}
-    .card{max-width:980px;margin:0 auto;border:1px solid #e5e7eb;border-radius:16px;padding:20px;box-shadow:0 2px 14px rgba(0,0,0,.05);background:#fff}
-    h1{margin:0 0 8px;font-size:22px}
-    h2{margin:18px 0 8px;font-size:16px}
-    p{margin:8px 0}
-    ul{margin:8px 0 8px 20px}
-    li{margin:6px 0}
-    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
-    .btn{display:inline-block;padding:10px 12px;border:1px solid #111827;border-radius:12px;text-decoration:none;font-size:14px}
-    .btn.primary{background:#111827;color:#fff}
-    .btn.secondary{background:#fff;color:#111827}
-    .muted{color:#6b7280;font-size:13px}
-    .hr{height:1px;background:#e5e7eb;margin:16px 0}
-    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#f3f4f6;font-size:12px}
-    footer{margin-top:18px}
-    code{background:#f3f4f6;padding:2px 6px;border-radius:8px}
-  
-    /* ✅ APP 下載區塊（首頁廣告） */
-    .appAd{border:1px solid #e5e7eb;border-radius:16px;padding:16px;margin:14px 0;background:#fafafa}
-    .appAdHeader{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
-    .appGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
-    @media(max-width:720px){.appGrid{grid-template-columns:1fr}}
-    .storeCard{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:12px;display:flex;gap:12px;align-items:center}
-    .storeCard img{width:118px;height:118px;border-radius:14px;border:1px solid #e5e7eb;background:#fff}
-    .storeMeta{flex:1;min-width:220px}
-    .storeTitle{margin:0;font-weight:700}
-    .storeLinks{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
-    .small{color:#6b7280;font-size:12px;margin-top:8px}
-    code{word-break:break-all}
-
-  </style>
-
-  <!-- ✅ AdSense（建議：先在 AdSense 後台把「自動廣告 Auto ads」關掉，改用手動廣告位）
-       這樣廣告不會被插到 Loading / 空白狀態的畫面，最穩定。
-       如果你確定要用 Auto ads，也只要把這段 script 放在「內容頁」(index.html)，不要放在 rank.html。
-  -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3467776493029448"
-          crossorigin="anonymous"></script>
-</head>
-
-<body>
-  <div class="card">
-    <h1>新楓之谷｜經驗值 / 戰力 / 職業內排名 查詢</h1>
-    <p class="muted">
-      這是一個小工具網站，提供角色查詢、前 100 名榜單、職業篩選、分享連結與搜尋紀錄。
-      若你是第一次使用，建議先閱讀下方「使用方式」與「常見問題」。
-    </p>
-
-    <!-- ✅ APP 下載連結廣告（放在首頁最上方） -->
-    <div class="appAd" id="download-app">
-      <div class="appAdHeader">
-        <div>
-          <span class="pill">APP 下載</span>
-          <p style="margin:8px 0 0"><b>配配任務</b>｜一起來玩 / 配對聊天</p>
-          <p class="muted" style="margin-top:6px">掃描 QR Code 或點連結下載（iOS / Android）。</p>
-        </div>
-        <div class="row" style="margin-top:0">
-          <a class="btn primary" href="https://apps.apple.com/tw/app/%E9%85%8D%E9%85%8D%E4%BB%BB%E5%8B%99/id6755572328" target="_blank" rel="noopener noreferrer">App Store</a>
-          <a class="btn secondary" href="https://play.google.com/store/apps/details?id=com.ezraop.peipei&pli=1" target="_blank" rel="noopener noreferrer">Google Play</a>
-        </div>
-      </div>
-
-      <div class="appGrid">
-        <div class="storeCard">
-          <img src="./peipei_appstore_qr.png" alt="配配任務 App Store QR Code" loading="lazy" />
-          <div class="storeMeta">
-            <p class="storeTitle">iPhone / iPad（App Store）</p>
-            <div class="storeLinks">
-              <a class="btn primary" href="https://apps.apple.com/tw/app/%E9%85%8D%E9%85%8D%E4%BB%BB%E5%8B%99/id6755572328" target="_blank" rel="noopener noreferrer">立即下載</a>
-            </div>
-            <div class="small">連結：<code>https://apps.apple.com/tw/app/%E9%85%8D%E9%85%8D%E4%BB%BB%E5%8B%99/id6755572328</code></div>
-          </div>
-        </div>
-
-        <div class="storeCard">
-          <img src="./peipei_play_qr.png" alt="配配任務 Google Play QR Code" loading="lazy" />
-          <div class="storeMeta">
-            <p class="storeTitle">Android（Google Play）</p>
-            <div class="storeLinks">
-              <a class="btn primary" href="https://play.google.com/store/apps/details?id=com.ezraop.peipei&pli=1" target="_blank" rel="noopener noreferrer">立即下載</a>
-            </div>
-            <div class="small">連結：<code>https://play.google.com/store/apps/details?id=com.ezraop.peipei&pli=1</code></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-
-    <div class="row">
-      <a class="btn primary" href="./rank.html">前往查詢工具</a>
-      <a class="btn secondary" href="./privacy.html">隱私權政策</a>
-      
-    </div>
-
-    <div class="hr"></div>
-
-    <h2>功能特色</h2>
-    <ul>
-      <li>查詢角色：顯示等級、經驗值%、戰力、全服/分服排名與職業內排名。</li>
-      <li>榜單：顯示前 100 名（經驗 / 戰力），支援伺服器篩選與職業篩選。</li>
-      <li>附近榜：查詢到單筆資料時，可顯示角色上下附近 50 名（可往上/往下翻）。</li>
-      <li>分享連結：一鍵複製包含查詢參數的網址，方便分享。</li>
-      <li>搜尋紀錄：雙擊名稱輸入框可叫出紀錄清單（支援方向鍵選取）。</li>
-    </ul>
-
-    <h2>使用方式</h2>
-    <ul>
-      <li>點「前往查詢工具」，輸入角色名稱（例如：<code>Ezra蓮</code>）。</li>
-      <li>按「查詢」即可看到排名與資料。</li>
-      <li>需要分享時按「複製查詢連結」。</li>
-    </ul>
-
-    <h2>常見問題</h2>
-    <p><b>Q：查不到角色怎麼辦？＆ 轉移過伺服器也一樣要重新搜尋登錄！</b></p>
-    <p class="muted">
-      本資料庫收錄 挑戰者服 260 以上、一般服 270 以上角色。
-若查不到，請至 <a href="https://opencheapgpt.pse.is/opencheapgpt" target="_blank" rel="noopener noreferrer">
-  https://opencheapgpt.pse.is/opencheapgpt
-</a>
- 搜尋角色名稱，數分鐘後將自動收錄，或隔天再查詢看看。
-    </p>
-
-    <h2>免責聲明</h2>
-    <p class="muted">
-      本站為非官方工具，僅供資訊查詢與個人參考使用；資料可能因更新/延遲/缺漏而與實際狀況不同。
-      若你不希望某些資料被展示，請以資料來源端為準進行管理。
-    </p>
-
-    <div class="hr"></div>
-
-    <!-- ✅ 手動廣告位（可選）
-         你如果要「最穩」：請在 AdSense 建立一個「顯示廣告」廣告單元，拿到 data-ad-slot 後填上。
-         如果你仍使用 Auto ads，此段可以不用加，但請只把 AdSense script 放在內容頁（index.html）。
-    -->
-    <!--
-    <ins class="adsbygoogle"
-         style="display:block; margin-top:14px;"
-         data-ad-client="ca-pub-3467776493029448"
-         data-ad-slot="請填你的slot"
-         data-ad-format="auto"
-         data-full-width-responsive="true"></ins>
-    <script>
-      (adsbygoogle = window.adsbygoogle || []).push({});
-    </script>
-    -->
-
-    <footer class="muted">
-      <div>© <span id="y"></span> 角色排名查詢工具</div>
-      <div>頁面：<a href="./rank.html">查詢工具</a>　|　<a href="./privacy.html">隱私權政策</a></div>
-    </footer>
-  </div>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>自動轉址中...</title>
+  <meta http-equiv="refresh" content="0;url=https://script.google.com/macros/s/AKfycbxohYZ7oByYB6K7ffQj_GMgidn8c10DvTxATeuSeFiBlX3ogtkmM02IFfm0e2jvH-Uf/exec" />
   <script>
-    document.getElementById("y").textContent = new Date().getFullYear();
+    window.location.replace('https://script.google.com/macros/s/AKfycbxohYZ7oByYB6K7ffQj_GMgidn8c10DvTxATeuSeFiBlX3ogtkmM02IFfm0e2jvH-Uf/exec');
   </script>
-
-<div class="muted" style="margin-top:10px">瀏覽人數統計：<span data-visit-count>（載入中…）</span></div>
-
-<script src="./counter.js"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #f9fafb;
+      color: #111827;
+    }
+    .box {
+      max-width: 680px;
+      margin: 24px;
+      padding: 24px;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.06);
+      text-align: center;
+    }
+    a { color: #2563eb; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>正在自動轉址...</h1>
+    <p>如果沒有自動跳轉，請點下面連結：</p>
+    <p><a href="https://script.google.com/macros/s/AKfycbxohYZ7oByYB6K7ffQj_GMgidn8c10DvTxATeuSeFiBlX3ogtkmM02IFfm0e2jvH-Uf/exec">前往網站</a></p>
+  </div>
 </body>
 </html>
